@@ -191,14 +191,14 @@ export default function MapView() {
     };
 
     return (
-        <div style={{ display: "flex", gap: "20px" }}>
+        <div className="flex flex-col lg:flex-row gap-6 h-full">
 
             {/* ================= MAP ================= */}
-            <div style={{ flex: 2 }}>
+            <div className="flex-[2] bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden relative z-0">
                 <MapContainer
                     center={[-2.5, 118]}
                     zoom={5}
-                    style={{ height: "500px" }}
+                    style={{ height: "500px", width: "100%" }}
                 >
                     <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
 
@@ -223,31 +223,127 @@ export default function MapView() {
             </div>
 
             {/* ================= DETAIL PANEL ================= */}
-            <div style={{
-                flex: 1,
-                background: "white",
-                padding: "15px",
-                borderRadius: "10px",
-                boxShadow: "0 2px 6px rgba(0,0,0,0.1)"
-            }}>
-                <h3>Detail Provinsi</h3>
-
+            <div className="flex-1 bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col overflow-hidden min-h-[500px]">
                 {selected ? (
                     <>
-                        {/* SECTION 1 */}
-                        <h4>{selected.provinsi}</h4>
-                        <p><b>Capital:</b> {selected.ibukota || "-"}</p>
+                        {/* Header Panel (Background Biru Muda) */}
+                        <div className="bg-[#f4f7fc] p-6 border-b border-slate-200">
+                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Detail Provinsi</p>
+                            <h2 className="text-2xl font-bold text-slate-900 mb-1.5">{selected.provinsi}</h2>
+                            <div className="flex items-center text-sm text-slate-600 gap-1.5">
+                                <span className="material-symbols-outlined text-[16px]">location_city</span>
+                                <span>Capital: {selected.ibukota || "-"}</span>
+                            </div>
+                        </div>
 
-                        {/* SECTION 2 */}
-                        <p><b>Total Area:</b> {selected.luas || "-"}</p>
-                        <p><b>Jumlah Pulau:</b> {selected.pulau || "-"}</p>
-                        <p><b>Latitude:</b> {selected.lat || "-"}</p>
-                        <p><b>Longitude:</b> {selected.lng || "-"}</p>
+                        {/* Body Panel (Data Asli) */}
+                        <div className="p-6 flex-1 flex flex-col">
+                            
+                            {/* Total Area */}
+                            <div className="border-b border-slate-100 pb-4 mb-4">
+                                <p className="text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Total Area</p>
+                                <p className="text-lg font-bold text-slate-800">
+                                    {selected.luas ? selected.luas.toLocaleString('id-ID') : "-"} <span className="text-sm font-semibold text-slate-500">km²</span>
+                                </p>
+                            </div>
+
+                            {/* Jumlah Pulau */}
+                            <div className="border-b border-slate-100 pb-4 mb-4">
+                                <p className="text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Jumlah Pulau</p>
+                                <p className="text-lg font-bold text-slate-800">
+                                    {selected.pulau ? selected.pulau.toLocaleString('id-ID') : "-"}
+                                </p>
+                            </div>
+
+                            {/* Coordinates (Dibuat kotak rapi) */}
+                            <div className="pb-4">
+                                <p className="text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-wider">Coordinates</p>
+                                <div className="flex justify-between items-center bg-slate-50 p-3 rounded-lg border border-slate-100">
+                                    <div className="flex flex-col">
+                                        <span className="text-[10px] text-slate-400 uppercase font-semibold">Latitude</span>
+                                        <span className="text-sm font-medium text-slate-700">{selected.lat ? selected.lat.toFixed(4) : "-"}</span>
+                                    </div>
+                                    <div className="h-6 w-px bg-slate-200"></div>
+                                    <div className="flex flex-col text-right">
+                                        <span className="text-[10px] text-slate-400 uppercase font-semibold">Longitude</span>
+                                        <span className="text-sm font-medium text-slate-700">{selected.lng ? selected.lng.toFixed(4) : "-"}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
                     </>
                 ) : (
-                    <p>Klik provinsi atau marker...</p>
+                    <div className="p-6 flex flex-col items-center justify-center h-full text-slate-400 text-center bg-slate-50/50">
+                        <span className="material-symbols-outlined text-5xl mb-3 opacity-50">touch_app</span>
+                        <p className="text-sm font-medium">Klik provinsi atau marker di peta<br/>untuk melihat detail.</p>
+                    </div>
                 )}
             </div>
         </div>
     );
+   
 }
+
+
+/* desain lama */
+// return (
+//         <div style={{ display: "flex", gap: "20px" }}>
+
+//             {/* ================= MAP ================= */}
+//             <div style={{ flex: 2 }}>
+//                 <MapContainer
+//                     center={[-2.5, 118]}
+//                     zoom={5}
+//                     style={{ height: "500px" }}
+//                 >
+//                     <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+
+//                     <LayerControl setMode={setMode} />
+
+//                     {dataMap && (
+//                         <GeoJSON
+//                             data={dataMap}
+//                             style={style}
+//                             onEachFeature={onEachFeature}
+//                         />
+//                     )}
+
+//                     {mode === "ibukota" && (
+//                         <GeoJSON
+//                             data={ibukotaGeoJSON}
+//                             pointToLayer={(f, latlng) => L.marker(latlng)}
+//                             onEachFeature={onEachCapital}
+//                         />
+//                     )}
+//                 </MapContainer>
+//             </div>
+
+//             {/* ================= DETAIL PANEL ================= */}
+//             <div style={{
+//                 flex: 1,
+//                 background: "white",
+//                 padding: "15px",
+//                 borderRadius: "10px",
+//                 boxShadow: "0 2px 6px rgba(0,0,0,0.1)"
+//             }}>
+//                 <h3>Detail Provinsi</h3>
+
+//                 {selected ? (
+//                     <>
+//                         {/* SECTION 1 */}
+//                         <h4>{selected.provinsi}</h4>
+//                         <p><b>Capital:</b> {selected.ibukota || "-"}</p>
+
+//                         {/* SECTION 2 */}
+//                         <p><b>Total Area:</b> {selected.luas || "-"}</p>
+//                         <p><b>Jumlah Pulau:</b> {selected.pulau || "-"}</p>
+//                         <p><b>Latitude:</b> {selected.lat || "-"}</p>
+//                         <p><b>Longitude:</b> {selected.lng || "-"}</p>
+//                     </>
+//                 ) : (
+//                     <p>Klik provinsi atau marker...</p>
+//                 )}
+//             </div>
+//         </div>
+//     ); 

@@ -48,7 +48,7 @@ function LayerControl({ setMode }) {
 /* =========================
    MAIN
 ========================= */
-export default function MapView({filters}) {
+export default function MapView({ filters }) {
     const [baseData, setBaseData] = useState(null);
     const [mode, setMode] = useState("luas");
     const [selected, setSelected] = useState(null); // 🔥 penting
@@ -119,10 +119,10 @@ export default function MapView({filters}) {
                 }
             },
         });
-        
+
     }, []);
     // Tambahkan ini di bawah useEffect Papa.parse
-        const dataMap = useMemo(() => {
+    const dataMap = useMemo(() => {
         if (!baseData) return null;
         if (!filters) return baseData;
 
@@ -209,11 +209,20 @@ export default function MapView({filters}) {
     const onEachCapital = (f, layer) => {
         layer.on({
             click: () => {
+                const nama = normalize(f.properties.provinsi);
+
+                const prov = baseData?.features.find(
+                    (d) => normalize(d.properties.provinsi) === nama
+                );
                 setSelected({
                     provinsi: f.properties.provinsi,
                     ibukota: f.properties.ibukota,
+                    luas: prov?.properties.luas,
+                    pulau: prov?.properties.jumlah_pulau,
                     lat: f.geometry.coordinates[1],
                     lng: f.geometry.coordinates[0]
+
+
                 });
             }
         });
@@ -268,7 +277,7 @@ export default function MapView({filters}) {
 
                         {/* Body Panel (Data Asli) */}
                         <div className="p-6 flex-1 flex flex-col">
-                            
+
                             {/* Total Area */}
                             <div className="border-b border-slate-100 pb-4 mb-4">
                                 <p className="text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Total Area</p>
@@ -306,13 +315,13 @@ export default function MapView({filters}) {
                 ) : (
                     <div className="p-6 flex flex-col items-center justify-center h-full text-slate-400 text-center bg-slate-50/50">
                         <span className="material-symbols-outlined text-5xl mb-3 opacity-50">touch_app</span>
-                        <p className="text-sm font-medium">Klik provinsi atau marker di peta<br/>untuk melihat detail.</p>
+                        <p className="text-sm font-medium">Klik provinsi atau marker di peta<br />untuk melihat detail.</p>
                     </div>
                 )}
             </div>
         </div>
     );
-   
+
 }
 
 

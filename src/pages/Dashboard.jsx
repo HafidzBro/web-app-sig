@@ -5,7 +5,33 @@ import SummaryCard from "../components/SummaryCard";
 
 export default function Dashboard() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [draftFilters, setDraftFilters] = useState({
+    area: { large: true, medium: false, small: false },
+    islandCount: '100-1000'
+  });
 
+  const [appliedFilters, setAppliedFilters] = useState(draftFilters);
+
+  const handleAreaChange = (scale) => {
+    setDraftFilters(prev => ({
+      ...prev,
+      area: { ...prev.area, [scale]: !prev.area[scale] }
+    }));
+  };
+
+  const handleApply = () => {
+    setAppliedFilters(draftFilters);
+    setIsFilterOpen(false); // Opsional: tutup laci setelah apply
+  };
+
+  const handleReset = () => {
+    const defaultFilters = {
+      area: { large: true, medium: true, small: true },
+      islandCount: 'all'
+    };
+    setDraftFilters(defaultFilters);
+    setAppliedFilters(defaultFilters);
+  };
   return (
     <>
       <main className="p-6 h-[calc(100vh-64px)] overflow-y-auto relative">
@@ -68,7 +94,7 @@ export default function Dashboard() {
         {/* Map Area */}
         <div className="mb-6">
           {/* Ini dia cara memanggil komponen MapView kamu! */}
-          <MapView />
+          <MapView filters={appliedFilters}/>
         </div>
       </main>
 
@@ -91,31 +117,32 @@ export default function Dashboard() {
             <span className="material-symbols-outlined text-[20px]">close</span>
           </button>
         </div>
-
         <div className="flex-1 overflow-y-auto pr-2 space-y-6">
+            {/*Detail Provinsi*/}
+           
           {/* Typology */}
-          <div>
+        <div>
             <label className="block text-xs font-semibold text-slate-500 mb-2">TIPOLOGI</label>
             <select className="w-full bg-slate-50 border border-slate-200 rounded-md py-2 px-3 text-slate-700 outline-none">
               <option>Provinsi Daratan</option>
               <option>Provinsi Kepulauan</option>
             </select>
-          </div>
+        </div>
 
           {/* Area Scale */}
           <div>
             <label className="block text-xs font-semibold text-slate-500 mb-2">AREA SCALE (KM²)</label>
             <div className="space-y-2">
               <label className="flex items-center gap-3 p-2 hover:bg-slate-50 cursor-pointer rounded">
-                <input type="checkbox" className="w-4 h-4 accent-blue-600" defaultChecked />
+                <input type="checkbox" checked={draftFilters.area.large} onChange={() => handleAreaChange('large')} className="w-4 h-4 accent-blue-600" />
                 <span className="text-slate-700">&gt; 50.000</span>
               </label>
               <label className="flex items-center gap-3 p-2 hover:bg-slate-50 cursor-pointer rounded">
-                <input type="checkbox" className="w-4 h-4 accent-blue-600" />
+                <input type="checkbox" checked={draftFilters.area.medium} onChange={() => handleAreaChange('medium')} className="w-4 h-4 accent-blue-600" />
                 <span className="text-slate-700">10.000 - 50.000</span>
               </label>
               <label className="flex items-center gap-3 p-2 hover:bg-slate-50 cursor-pointer rounded">
-                <input type="checkbox" className="w-4 h-4 accent-blue-600" />
+                <input type="checkbox" checked={draftFilters.area.small} onChange={() => handleAreaChange('small')} className="w-4 h-4 accent-blue-600" />
                 <span className="text-slate-700">&lt; 10.000</span>
               </label>
             </div>
@@ -126,46 +153,30 @@ export default function Dashboard() {
             <label className="block text-xs font-semibold text-slate-500 mb-2">ISLAND COUNT</label>
             <div className="space-y-2">
               <label className="flex items-center gap-3 p-2 hover:bg-slate-50 cursor-pointer rounded">
-                <input type="radio" name="island_count" className="w-4 h-4 accent-blue-600" />
+                <input type="radio" checked={draftFilters.islandCount === '>1000'} onChange={() => setDraftFilters({...draftFilters, islandCount: '>1000'})} className="w-4 h-4 accent-blue-600" />
                 <span className="text-slate-700">&gt; 1.000</span>
               </label>
               <label className="flex items-center gap-3 p-2 hover:bg-slate-50 cursor-pointer rounded">
-                <input type="radio" name="island_count" className="w-4 h-4 accent-blue-600" defaultChecked />
+                <input type="radio" checked={draftFilters.islandCount === '100-1000'} onChange={() => setDraftFilters({...draftFilters, islandCount: '100-1000'})} className="w-4 h-4 accent-blue-600" />
                 <span className="text-slate-700">100 - 1.000</span>
               </label>
               <label className="flex items-center gap-3 p-2 hover:bg-slate-50 cursor-pointer rounded">
-                <input type="radio" name="island_count" className="w-4 h-4 accent-blue-600" />
+                <input type="radio" checked={draftFilters.islandCount === '<100'} onChange={() => setDraftFilters({...draftFilters, islandCount: '<100'})} className="w-4 h-4 accent-blue-600" />
                 <span className="text-slate-700">&lt; 100</span>
               </label>
             </div>
           </div>
 
           {/* Active Filters Chips */}
-          <div className="pt-4 border-t border-slate-200">
-            <label className="block text-xs font-semibold text-slate-500 mb-2">ACTIVE FILTERS</label>
-            <div className="flex flex-wrap gap-2">
-              <div className="inline-flex items-center gap-1 bg-slate-100 border border-slate-200 rounded-full px-3 py-1 text-xs text-slate-700">
-                Mainland Province
-                <button className="hover:text-red-500 text-slate-400 flex items-center justify-center transition-colors">
-                  <span className="material-symbols-outlined text-[14px]">close</span>
-                </button>
-              </div>
-              <div className="inline-flex items-center gap-1 bg-slate-100 border border-slate-200 rounded-full px-3 py-1 text-xs text-slate-700">
-                Area &gt; 50k
-                <button className="hover:text-red-500 text-slate-400 flex items-center justify-center transition-colors">
-                  <span className="material-symbols-outlined text-[14px]">close</span>
-                </button>
-              </div>
-            </div>
-          </div>
+         
 
         </div>
 
         <div className="mt-6 pt-4 border-t border-slate-200 flex gap-3">
-          <button className="flex-1 bg-white border border-slate-200 text-slate-700 py-2 px-4 rounded font-semibold hover:bg-slate-50 transition-colors">
+          <button onClick={handleReset} className="flex-1 bg-white border border-slate-200 text-slate-700 py-2 px-4 rounded font-semibold hover:bg-slate-50 transition-colors">
             Reset
           </button>
-          <button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded font-semibold transition-colors shadow-sm">
+          <button onClick={handleApply} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded font-semibold transition-colors shadow-sm">
             Apply Filters
           </button>
         </div>

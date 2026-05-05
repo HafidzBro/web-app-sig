@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { MapContainer, TileLayer, GeoJSON, useMap } from "react-leaflet";
 import Papa from "papaparse";
 import L from "leaflet";
@@ -48,8 +48,8 @@ function LayerControl({ setMode }) {
 /* =========================
    MAIN
 ========================= */
-export default function MapView() {
-    const [dataMap, setDataMap] = useState(null);
+export default function MapView({filters}) {
+    const [baseData, setBaseData] = useState(null);
     const [mode, setMode] = useState("luas");
     const [selected, setSelected] = useState(null); // 🔥 penting
 
@@ -100,7 +100,7 @@ export default function MapView() {
                     }),
                 };
 
-                setDataMap(merged);
+                setBaseData(merged);
 
                 /* 🔥 DEFAULT KE JAKARTA */
                 const jakarta = merged.features.find(
@@ -119,7 +119,36 @@ export default function MapView() {
                 }
             },
         });
+        
     }, []);
+    // Tambahkan ini di bawah useEffect Papa.parse
+        const dataMap = useMemo(() => {
+        if (!baseData) return null;
+        if (!filters) return baseData;
+
+        const filteredFeatures = baseData.features.filter((f) => {
+            const luas = f.properties.luas || 0;
+            const pulau = f.properties.jumlah_pulau || 0;
+
+            // Filter Area
+            let passArea = false;
+            if (!filters.area.large && !filters.area.medium && !filters.area.small) passArea = true;
+            if (filters.area.large && luas >= 50000) passArea = true;
+            if (filters.area.medium && luas >= 10000 && luas < 50000) passArea = true;
+            if (filters.area.small && luas < 10000) passArea = true;
+
+            // Filter Island
+            let passIsland = false;
+            if (filters.islandCount === 'all') passIsland = true;
+            if (filters.islandCount === '>1000' && pulau > 1000) passIsland = true;
+            if (filters.islandCount === '100-1000' && pulau >= 100 && pulau <= 1000) passIsland = true;
+            if (filters.islandCount === '<100' && pulau < 100) passIsland = true;
+
+            return passArea && passIsland;
+        });
+
+        return { ...baseData, features: filteredFeatures };
+    }, [baseData, filters]);
 
     /* =========================
        COLOR
@@ -206,6 +235,7 @@ export default function MapView() {
 
                     {dataMap && (
                         <GeoJSON
+                            key={JSON.stringify(filters)}
                             data={dataMap}
                             style={style}
                             onEachFeature={onEachFeature}

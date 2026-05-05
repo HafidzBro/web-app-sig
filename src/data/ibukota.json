@@ -186,7 +186,7 @@
         {
             "type": "Feature",
             "properties": {
-                "provinsi": "DI Yogyakarta",
+                "provinsi": "Daerah Istimewa Yogyakarta",
                 "ibukota": "Yogyakarta"
             },
             "geometry": {

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import MapView from "../components/MapView";
 import SummaryCard from "../components/SummaryCard";
@@ -32,6 +31,16 @@ export default function Dashboard() {
     setDraftFilters(defaultFilters);
     setAppliedFilters(defaultFilters);
   };
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchData, setSearchData] = useState([]);
+  const [selectedLocation, setSelectedLocation] = useState(null);
+
+  const handleSelect = (item) => {
+    setSearchQuery(item.provinsi);
+    setSelectedLocation(item);
+  };
+  
   return (
     <>
       <main className="p-6 h-[calc(100vh-64px)] overflow-y-auto relative">
@@ -72,14 +81,35 @@ export default function Dashboard() {
         <div className="mb-4 flex justify-between items-center">
           
           {/* Search Bar */}
-          <div className="relative w-80 shadow-sm rounded-lg">
-            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg">search</span>
-            <input 
-              type="text" 
-              placeholder="Cari Provinsi atau Ibu Kota..." 
-              className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm"
-            />
+          <div className="relative w-80 mb-4">
+        <input
+          type="text"
+          placeholder="Cari Provinsi / Ibukota..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full border p-2 rounded"
+        />
+
+        {searchQuery && (
+          <div className="absolute bg-white border w-full mt-1 max-h-60 overflow-auto z-50">
+            {searchData
+              .filter(item =>
+                item.provinsi.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                item.ibukota?.toLowerCase().includes(searchQuery.toLowerCase())
+              )
+              .map((item, i) => (
+                <div
+                  key={i}
+                  onClick={() => handleSelect(item)}
+                  className="p-2 hover:bg-gray-100 cursor-pointer"
+                >
+                  <b>{item.provinsi}</b><br />
+                  <small>{item.ibukota}</small>
+                </div>
+              ))}
           </div>
+        )}
+      </div>
 
           {/* Tombol Advanced Filters */}
           <button 
@@ -94,7 +124,11 @@ export default function Dashboard() {
         {/* Map Area */}
         <div className="mb-6">
           {/* Ini dia cara memanggil komponen MapView kamu! */}
-          <MapView filters={appliedFilters}/>
+          <MapView 
+          filters={appliedFilters}
+          onDataLoaded={setSearchData}
+          selectedLocation={selectedLocation}
+          />
         </div>
       </main>
 

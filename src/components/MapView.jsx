@@ -46,9 +46,24 @@ function LayerControl({ setMode }) {
 }
 
 /* =========================
+   FLY TO LOCATION
+========================= */
+function FlyToLocation({ location }) {
+    const map = useMap();
+
+    useEffect(() => {
+        if (location) {
+            map.flyTo([location.lat, location.lng], 8);
+        }
+    }, [location, map]);
+
+    return null;
+}
+
+/* =========================
    MAIN
 ========================= */
-export default function MapView({ filters }) {
+export default function MapView({ filters, onDataLoaded, selectedLocation }) {
     const [baseData, setBaseData] = useState(null);
     const [mode, setMode] = useState("luas");
     const [selected, setSelected] = useState(null); // 🔥 penting
@@ -102,6 +117,17 @@ export default function MapView({ filters }) {
 
                 setBaseData(merged);
 
+                /* 🔥 KIRIM DATA KE SEARCH */
+                if (onDataLoaded) {
+                    const list = merged.features.map(f => ({
+                        provinsi: f.properties.provinsi,
+                        ibukota: f.properties.ibukota,
+                        lat: f.properties.lat,
+                        lng: f.properties.lng
+                    }));
+                    onDataLoaded(list);
+                }
+
                 /* 🔥 DEFAULT KE JAKARTA */
                 const jakarta = merged.features.find(
                     (f) => normalize(f.properties.provinsi) === "dki jakarta"
@@ -121,6 +147,31 @@ export default function MapView({ filters }) {
         });
 
     }, []);
+
+    /* =========================
+       HANDLE SEARCH SELECT
+    ========================= */
+    useEffect(() => {
+        if (selectedLocation && baseData) {
+            const nama = normalize(selectedLocation.provinsi);
+
+            const prov = baseData.features.find(
+                f => normalize(f.properties.provinsi) === nama
+            );
+
+            if (prov) {
+                setSelected({
+                    provinsi: prov.properties.provinsi,
+                    ibukota: prov.properties.ibukota,
+                    luas: prov.properties.luas,
+                    pulau: prov.properties.jumlah_pulau,
+                    lat: prov.properties.lat,
+                    lng: prov.properties.lng
+                });
+            }
+        }
+    }, [selectedLocation, baseData]);
+
     // Tambahkan ini di bawah useEffect Papa.parse
     const dataMap = useMemo(() => {
         if (!baseData) return null;
@@ -241,6 +292,8 @@ export default function MapView({ filters }) {
                     <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
 
                     <LayerControl setMode={setMode} />
+
+                    {selectedLocation && <FlyToLocation location={selectedLocation} />}
 
                     {dataMap && (
                         <GeoJSON

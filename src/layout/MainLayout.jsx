@@ -1,4 +1,3 @@
-import React from 'react';
 import { Outlet } from 'react-router-dom'; // 1. Import Outlet dari react-router-dom
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';

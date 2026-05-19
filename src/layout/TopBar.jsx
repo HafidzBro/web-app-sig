@@ -1,19 +1,7 @@
-import React from "react";
-
 export default function TopBar() {
   return (
-    <header className="bg-white/80 backdrop-blur-md font-inter text-sm antialiased border-b border-slate-200 shadow-sm fixed top-0 right-0 left-64 z-30 flex items-center justify-between px-8 h-16">
-      <div className="flex items-center gap-8 h-full">
-        <div className="text-lg font-extrabold text-slate-900"> Nusantara dalam Angka</div>
-      </div>
-      <div className="flex items-center gap-4">
-        <button className="text-slate-500 hover:text-blue-600 transition-colors">
-          <span className="material-symbols-outlined">notifications</span>
-        </button>
-        <button className="text-slate-500 hover:text-blue-600 transition-colors">
-          <span className="material-symbols-outlined">account_circle</span>
-        </button>
-      </div>
+    <header className="fixed left-64 right-0 top-0 z-30 flex h-16 items-center border-b border-slate-200 bg-white/85 px-8 text-sm antialiased shadow-sm backdrop-blur-md">
+      <div className="text-lg font-extrabold text-slate-900">Nusantara dalam Angka</div>
     </header>
   );
 }

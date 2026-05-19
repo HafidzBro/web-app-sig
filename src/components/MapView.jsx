@@ -1,5 +1,5 @@
-import { useEffect, useState, useMemo } from "react";
-import { MapContainer, TileLayer, GeoJSON, useMap } from "react-leaflet";
+import { useEffect, useMemo, useState } from "react";
+import { MapContainer, TileLayer, GeoJSON, ZoomControl, useMap } from "react-leaflet";
 import Papa from "papaparse";
 import L from "leaflet";
 
@@ -10,432 +10,463 @@ import "../styles/map.css";
 
 const normalize = (str) => str?.toLowerCase().trim();
 
-/* =========================
-   CONTROL
-========================= */
-function LayerControl({ setMode }) {
-    const map = useMap();
+const mapModes = [
+  { id: "luas", label: "Area", icon: "map" },
+  { id: "pulau", label: "Islands", icon: "hub" },
+  { id: "ibukota", label: "Capitals", icon: "location_city" },
+];
 
-    useEffect(() => {
-        const control = L.control({ position: "topright" });
+const legends = {
+  luas: {
+    title: "Area Legend",
+    unit: "km2",
+    items: [
+      { label: "> 50.000", color: "#075985" },
+      { label: "10.000 - 50.000", color: "#0284c7" },
+      { label: "< 10.000", color: "#93c5fd" },
+    ],
+  },
+  pulau: {
+    title: "Islands Legend",
+    unit: "pulau",
+    items: [
+      { label: "> 1.000", color: "#0f766e" },
+      { label: "100 - 1.000", color: "#14b8a6" },
+      { label: "< 100", color: "#99f6e4" },
+    ],
+  },
+};
 
-        control.onAdd = function () {
-            const div = L.DomUtil.create("div", "custom-control");
-
-            div.innerHTML = `
-                <button id="btn-area">Area</button>
-                <button id="btn-pulau">Islands</button>
-                <button id="btn-ibukota">Capitals</button>
-            `;
-
-            return div;
-        };
-
-        control.addTo(map);
-
-        setTimeout(() => {
-            document.getElementById("btn-area").onclick = () => setMode("luas");
-            document.getElementById("btn-pulau").onclick = () => setMode("pulau");
-            document.getElementById("btn-ibukota").onclick = () => setMode("ibukota");
-        }, 0);
-
-        return () => control.remove();
-    }, [map, setMode]);
-
-    return null;
+function formatNumber(value) {
+  return value ? value.toLocaleString("id-ID") : "-";
 }
 
-/* =========================
-   FLY TO LOCATION
-========================= */
+function createSelectedProvince(properties) {
+  return {
+    provinsi: properties.provinsi,
+    ibukota: properties.ibukota,
+    luas: properties.luas,
+    pulau: properties.jumlah_pulau,
+    lat: properties.lat,
+    lng: properties.lng,
+  };
+}
+
+function LayerControl({ mode, setMode }) {
+  const map = useMap();
+
+  useEffect(() => {
+    const control = L.control({ position: "topright" });
+
+    control.onAdd = function () {
+      const div = L.DomUtil.create("div", "custom-control");
+      L.DomEvent.disableClickPropagation(div);
+
+      div.innerHTML = mapModes
+        .map(
+          (item) => `
+            <button
+              type="button"
+              data-mode="${item.id}"
+              class="${mode === item.id ? "is-active" : ""}"
+              title="${item.label}"
+            >
+              <span class="material-symbols-outlined">${item.icon}</span>
+              <span>${item.label}</span>
+            </button>
+          `,
+        )
+        .join("");
+
+      div.querySelectorAll("button").forEach((button) => {
+        button.addEventListener("click", () => setMode(button.dataset.mode));
+      });
+
+      return div;
+    };
+
+    control.addTo(map);
+
+    return () => control.remove();
+  }, [map, mode, setMode]);
+
+  return null;
+}
+
 function FlyToLocation({ location }) {
-    const map = useMap();
+  const map = useMap();
 
-    useEffect(() => {
-        if (location) {
-            map.flyTo([location.lat, location.lng], 8);
-        }
-    }, [location, map]);
+  useEffect(() => {
+    if (location) {
+      map.flyTo([location.lat, location.lng], 8);
+    }
+  }, [location, map]);
 
-    return null;
+  return null;
 }
 
-/* =========================
-   MAIN
-========================= */
-export default function MapView({ filters, onDataLoaded, selectedLocation }) {
-    const [baseData, setBaseData] = useState(null);
-    const [mode, setMode] = useState("luas");
-    const [selected, setSelected] = useState(null); // 🔥 penting
+function ResizeMap() {
+  const map = useMap();
 
-    useEffect(() => {
-        Papa.parse(csvFile, {
-            download: true,
-            header: true,
-            complete: (res) => {
+  useEffect(() => {
+    const container = map.getContainer();
+    const resizeObserver = new ResizeObserver(() => {
+      map.invalidateSize();
+    });
 
-                const csvMap = {};
-                const capitalMap = {};
+    resizeObserver.observe(container);
+    setTimeout(() => map.invalidateSize(), 0);
 
-                /* ================= CSV ================= */
-                res.data.forEach((d) => {
-                    if (d.Provinsi) {
-                        csvMap[normalize(d.Provinsi)] = {
-                            luas: parseFloat(d.Luas_Wilayah) || 0,
-                            jumlah_pulau: parseInt(d.Jumlah_Pulau) || 0,
-                        };
-                    }
-                });
+    return () => resizeObserver.disconnect();
+  }, [map]);
 
-                /* ================= IBUKOTA ================= */
-                ibukotaGeoJSON.features.forEach((f) => {
-                    const nama = normalize(f.properties.provinsi);
+  return null;
+}
 
-                    capitalMap[nama] = {
-                        ibukota: f.properties.ibukota,
-                        lat: f.geometry.coordinates[1],
-                        lng: f.geometry.coordinates[0],
-                    };
-                });
+function MapLegend({ mode }) {
+  const legend = legends[mode];
+  if (!legend) return null;
 
-                /* ================= FINAL JOIN ================= */
-                const merged = {
-                    ...geojsonData,
-                    features: geojsonData.features.map((f) => {
-                        const nama = normalize(f.properties.provinsi);
+  return (
+    <div className="absolute bottom-4 left-4 z-[500] w-52 rounded-lg bg-white/95 p-3 shadow-sm ring-1 ring-slate-200 backdrop-blur">
+      <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
+        {legend.title}
+      </p>
+      <div className="mt-3 space-y-2">
+        {legend.items.map((item) => (
+          <div key={item.label} className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span
+                className="h-3 w-6 rounded-sm ring-1 ring-black/5"
+                style={{ backgroundColor: item.color }}
+              />
+              <span className="text-xs font-semibold text-slate-700">{item.label}</span>
+            </div>
+            <span className="text-[11px] font-medium text-slate-400">{legend.unit}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
-                        return {
-                            ...f,
-                            properties: {
-                                ...f.properties,
-                                ...csvMap[nama],
-                                ...capitalMap[nama],
-                            },
-                        };
-                    }),
-                };
+function DetailMetric({ icon, label, value, unit }) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-blue-700">
+        <span className="material-symbols-outlined text-[20px]">{icon}</span>
+      </div>
+      <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
+        {label}
+      </p>
+      <p className="mt-1 text-xl font-bold text-slate-950">
+        {value}
+        {unit && <span className="ml-1 text-sm font-semibold text-slate-500">{unit}</span>}
+      </p>
+    </div>
+  );
+}
 
-                setBaseData(merged);
-
-                /* 🔥 KIRIM DATA KE SEARCH */
-                if (onDataLoaded) {
-                    const list = merged.features.map(f => ({
-                        provinsi: f.properties.provinsi,
-                        ibukota: f.properties.ibukota,
-                        lat: f.properties.lat,
-                        lng: f.properties.lng
-                    }));
-                    onDataLoaded(list);
-                }
-
-                /* 🔥 DEFAULT KE JAKARTA */
-                const jakarta = merged.features.find(
-                    (f) => normalize(f.properties.provinsi) === "dki jakarta"
-                );
-
-                if (jakarta) {
-                    setSelected({
-                        provinsi: jakarta.properties.provinsi,
-                        ibukota: jakarta.properties.ibukota,
-                        luas: jakarta.properties.luas,
-                        pulau: jakarta.properties.jumlah_pulau,
-                        lat: jakarta.properties.lat,
-                        lng: jakarta.properties.lng
-                    });
-                }
-            },
-        });
-
-    }, []);
-
-    /* =========================
-       HANDLE SEARCH SELECT
-    ========================= */
-    useEffect(() => {
-        if (selectedLocation && baseData) {
-            const nama = normalize(selectedLocation.provinsi);
-
-            const prov = baseData.features.find(
-                f => normalize(f.properties.provinsi) === nama
-            );
-
-            if (prov) {
-                setSelected({
-                    provinsi: prov.properties.provinsi,
-                    ibukota: prov.properties.ibukota,
-                    luas: prov.properties.luas,
-                    pulau: prov.properties.jumlah_pulau,
-                    lat: prov.properties.lat,
-                    lng: prov.properties.lng
-                });
-            }
-        }
-    }, [selectedLocation, baseData]);
-
-    // Tambahkan ini di bawah useEffect Papa.parse
-    const dataMap = useMemo(() => {
-        if (!baseData) return null;
-        if (!filters) return baseData;
-
-        const filteredFeatures = baseData.features.filter((f) => {
-            const luas = f.properties.luas || 0;
-            const pulau = f.properties.jumlah_pulau || 0;
-
-            // Filter Area
-            let passArea = false;
-            if (!filters.area.large && !filters.area.medium && !filters.area.small) passArea = true;
-            if (filters.area.large && luas >= 50000) passArea = true;
-            if (filters.area.medium && luas >= 10000 && luas < 50000) passArea = true;
-            if (filters.area.small && luas < 10000) passArea = true;
-
-            // Filter Island
-            let passIsland = false;
-            if (filters.islandCount === 'all') passIsland = true;
-            if (filters.islandCount === '>1000' && pulau > 1000) passIsland = true;
-            if (filters.islandCount === '100-1000' && pulau >= 100 && pulau <= 1000) passIsland = true;
-            if (filters.islandCount === '<100' && pulau < 100) passIsland = true;
-
-            return passArea && passIsland;
-        });
-
-        return { ...baseData, features: filteredFeatures };
-    }, [baseData, filters]);
-
-    /* =========================
-       COLOR
-    ========================= */
-    const getColor = (value, mode) => {
-        if (mode === "luas") {
-            return value > 70000 ? "#084081" :
-                value > 40000 ? "#2b8cbe" :
-                    "#a6bddb";
-        }
-
-        if (mode === "pulau") {
-            return value > 300 ? "#084081" :
-                value > 150 ? "#2b8cbe" :
-                    "#a6bddb";
-        }
-
-        return "#ccc";
-    };
-
-    const style = (feature) => {
-        if (mode === "ibukota") return { fillOpacity: 0 };
-
-        const value =
-            mode === "luas"
-                ? feature.properties.luas
-                : feature.properties.jumlah_pulau;
-
-        return {
-            fillColor: getColor(value, mode),
-            weight: 1,
-            color: "white",
-            fillOpacity: 0.7,
-        };
-    };
-
-    /* =========================
-       CLICK POLYGON
-    ========================= */
-    const onEachFeature = (feature, layer) => {
-        layer.on({
-            click: () => {
-                setSelected({
-                    provinsi: feature.properties.provinsi,
-                    ibukota: feature.properties.ibukota,
-                    luas: feature.properties.luas,
-                    pulau: feature.properties.jumlah_pulau,
-                    lat: feature.properties.lat,
-                    lng: feature.properties.lng
-                });
-            }
-        });
-    };
-
-    /* =========================
-       CLICK MARKER
-    ========================= */
-    const onEachCapital = (f, layer) => {
-        layer.on({
-            click: () => {
-                const nama = normalize(f.properties.provinsi);
-
-                const prov = baseData?.features.find(
-                    (d) => normalize(d.properties.provinsi) === nama
-                );
-                setSelected({
-                    provinsi: f.properties.provinsi,
-                    ibukota: f.properties.ibukota,
-                    luas: prov?.properties.luas,
-                    pulau: prov?.properties.jumlah_pulau,
-                    lat: f.geometry.coordinates[1],
-                    lng: f.geometry.coordinates[0]
-
-
-                });
-            }
-        });
-    };
-
+function ProvinceDetailPanel({ selected }) {
+  if (!selected) {
     return (
-        <div className="flex flex-col lg:flex-row gap-6 h-full">
-
-            {/* ================= MAP ================= */}
-            <div className="flex-[2] bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden relative z-0">
-                <MapContainer
-                    center={[-2.5, 118]}
-                    zoom={5}
-                    style={{ height: "500px", width: "100%" }}
-                >
-                    <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-
-                    <LayerControl setMode={setMode} />
-
-                    {selectedLocation && <FlyToLocation location={selectedLocation} />}
-
-                    {dataMap && (
-                        <GeoJSON
-                            key={JSON.stringify(filters)}
-                            data={dataMap}
-                            style={style}
-                            onEachFeature={onEachFeature}
-                        />
-                    )}
-
-                    {mode === "ibukota" && (
-                        <GeoJSON
-                            data={ibukotaGeoJSON}
-                            pointToLayer={(f, latlng) => L.marker(latlng)}
-                            onEachFeature={onEachCapital}
-                        />
-                    )}
-                </MapContainer>
-            </div>
-
-            {/* ================= DETAIL PANEL ================= */}
-            <div className="flex-1 bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col overflow-hidden min-h-[500px]">
-                {selected ? (
-                    <>
-                        {/* Header Panel (Background Biru Muda) */}
-                        <div className="bg-[#f4f7fc] p-6 border-b border-slate-200">
-                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Detail Provinsi</p>
-                            <h2 className="text-2xl font-bold text-slate-900 mb-1.5">{selected.provinsi}</h2>
-                            <div className="flex items-center text-sm text-slate-600 gap-1.5">
-                                <span className="material-symbols-outlined text-[16px]">location_city</span>
-                                <span>Capital: {selected.ibukota || "-"}</span>
-                            </div>
-                        </div>
-
-                        {/* Body Panel (Data Asli) */}
-                        <div className="p-6 flex-1 flex flex-col">
-
-                            {/* Total Area */}
-                            <div className="border-b border-slate-100 pb-4 mb-4">
-                                <p className="text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Total Area</p>
-                                <p className="text-lg font-bold text-slate-800">
-                                    {selected.luas ? selected.luas.toLocaleString('id-ID') : "-"} <span className="text-sm font-semibold text-slate-500">km²</span>
-                                </p>
-                            </div>
-
-                            {/* Jumlah Pulau */}
-                            <div className="border-b border-slate-100 pb-4 mb-4">
-                                <p className="text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Jumlah Pulau</p>
-                                <p className="text-lg font-bold text-slate-800">
-                                    {selected.pulau ? selected.pulau.toLocaleString('id-ID') : "-"}
-                                </p>
-                            </div>
-
-                            {/* Coordinates (Dibuat kotak rapi) */}
-                            <div className="pb-4">
-                                <p className="text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-wider">Coordinates</p>
-                                <div className="flex justify-between items-center bg-slate-50 p-3 rounded-lg border border-slate-100">
-                                    <div className="flex flex-col">
-                                        <span className="text-[10px] text-slate-400 uppercase font-semibold">Latitude</span>
-                                        <span className="text-sm font-medium text-slate-700">{selected.lat ? selected.lat.toFixed(4) : "-"}</span>
-                                    </div>
-                                    <div className="h-6 w-px bg-slate-200"></div>
-                                    <div className="flex flex-col text-right">
-                                        <span className="text-[10px] text-slate-400 uppercase font-semibold">Longitude</span>
-                                        <span className="text-sm font-medium text-slate-700">{selected.lng ? selected.lng.toFixed(4) : "-"}</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                        </div>
-                    </>
-                ) : (
-                    <div className="p-6 flex flex-col items-center justify-center h-full text-slate-400 text-center bg-slate-50/50">
-                        <span className="material-symbols-outlined text-5xl mb-3 opacity-50">touch_app</span>
-                        <p className="text-sm font-medium">Klik provinsi atau marker di peta<br />untuk melihat detail.</p>
-                    </div>
-                )}
-            </div>
+      <div className="flex min-h-[500px] flex-1 flex-col items-center justify-center bg-slate-50 px-6 text-center text-slate-500">
+        <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-white text-blue-700 shadow-sm ring-1 ring-slate-200">
+          <span className="material-symbols-outlined text-[30px]">touch_app</span>
         </div>
+        <p className="text-sm font-semibold text-slate-700">Pilih provinsi</p>
+        <p className="mt-1 max-w-52 text-sm">
+          Klik area provinsi atau marker ibu kota untuk melihat detail.
+        </p>
+      </div>
     );
+  }
 
+  return (
+    <aside className="flex min-h-[500px] flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="border-b border-slate-200 bg-slate-950 p-6 text-white">
+        <p className="text-xs font-bold uppercase tracking-wider text-blue-200">
+          Detail Provinsi
+        </p>
+        <h2 className="mt-2 text-2xl font-bold tracking-tight">{selected.provinsi}</h2>
+        <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-sm text-slate-100 ring-1 ring-white/15">
+          <span className="material-symbols-outlined text-[17px]">location_city</span>
+          <span>{selected.ibukota || "-"}</span>
+        </div>
+      </div>
+
+      <div className="flex-1 space-y-4 bg-slate-50 p-5">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+          <DetailMetric
+            icon="landscape"
+            label="Total Area"
+            value={formatNumber(selected.luas)}
+            unit="km2"
+          />
+          <DetailMetric
+            icon="water"
+            label="Jumlah Pulau"
+            value={formatNumber(selected.pulau)}
+          />
+        </div>
+
+        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="mb-3 flex items-center gap-2 text-slate-700">
+            <span className="material-symbols-outlined text-[19px] text-blue-700">
+              my_location
+            </span>
+            <p className="text-sm font-bold">Coordinates</p>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-md bg-slate-50 p-3">
+              <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                Latitude
+              </p>
+              <p className="mt-1 text-sm font-semibold text-slate-800">
+                {selected.lat ? selected.lat.toFixed(4) : "-"}
+              </p>
+            </div>
+            <div className="rounded-md bg-slate-50 p-3 text-right">
+              <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                Longitude
+              </p>
+              <p className="mt-1 text-sm font-semibold text-slate-800">
+                {selected.lng ? selected.lng.toFixed(4) : "-"}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  );
 }
 
+export default function MapView({ filters, onDataLoaded, selectedLocation }) {
+  const [baseData, setBaseData] = useState(null);
+  const [mode, setMode] = useState("luas");
+  const [selected, setSelected] = useState(null);
+  const selectedName = normalize(selected?.provinsi);
 
-/* desain lama */
-// return (
-//         <div style={{ display: "flex", gap: "20px" }}>
+  useEffect(() => {
+    Papa.parse(csvFile, {
+      download: true,
+      header: true,
+      complete: (res) => {
+        const csvMap = {};
+        const capitalMap = {};
 
-//             {/* ================= MAP ================= */}
-//             <div style={{ flex: 2 }}>
-//                 <MapContainer
-//                     center={[-2.5, 118]}
-//                     zoom={5}
-//                     style={{ height: "500px" }}
-//                 >
-//                     <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+        res.data.forEach((d) => {
+          if (d.Provinsi) {
+            csvMap[normalize(d.Provinsi)] = {
+              luas: parseFloat(d.Luas_Wilayah) || 0,
+              jumlah_pulau: parseInt(d.Jumlah_Pulau) || 0,
+            };
+          }
+        });
 
-//                     <LayerControl setMode={setMode} />
+        ibukotaGeoJSON.features.forEach((f) => {
+          const nama = normalize(f.properties.provinsi);
 
-//                     {dataMap && (
-//                         <GeoJSON
-//                             data={dataMap}
-//                             style={style}
-//                             onEachFeature={onEachFeature}
-//                         />
-//                     )}
+          capitalMap[nama] = {
+            ibukota: f.properties.ibukota,
+            lat: f.geometry.coordinates[1],
+            lng: f.geometry.coordinates[0],
+          };
+        });
 
-//                     {mode === "ibukota" && (
-//                         <GeoJSON
-//                             data={ibukotaGeoJSON}
-//                             pointToLayer={(f, latlng) => L.marker(latlng)}
-//                             onEachFeature={onEachCapital}
-//                         />
-//                     )}
-//                 </MapContainer>
-//             </div>
+        const merged = {
+          ...geojsonData,
+          features: geojsonData.features.map((f) => {
+            const nama = normalize(f.properties.provinsi);
 
-//             {/* ================= DETAIL PANEL ================= */}
-//             <div style={{
-//                 flex: 1,
-//                 background: "white",
-//                 padding: "15px",
-//                 borderRadius: "10px",
-//                 boxShadow: "0 2px 6px rgba(0,0,0,0.1)"
-//             }}>
-//                 <h3>Detail Provinsi</h3>
+            return {
+              ...f,
+              properties: {
+                ...f.properties,
+                ...csvMap[nama],
+                ...capitalMap[nama],
+              },
+            };
+          }),
+        };
 
-//                 {selected ? (
-//                     <>
-//                         {/* SECTION 1 */}
-//                         <h4>{selected.provinsi}</h4>
-//                         <p><b>Capital:</b> {selected.ibukota || "-"}</p>
+        setBaseData(merged);
 
-//                         {/* SECTION 2 */}
-//                         <p><b>Total Area:</b> {selected.luas || "-"}</p>
-//                         <p><b>Jumlah Pulau:</b> {selected.pulau || "-"}</p>
-//                         <p><b>Latitude:</b> {selected.lat || "-"}</p>
-//                         <p><b>Longitude:</b> {selected.lng || "-"}</p>
-//                     </>
-//                 ) : (
-//                     <p>Klik provinsi atau marker...</p>
-//                 )}
-//             </div>
-//         </div>
-//     ); 
+        if (onDataLoaded) {
+          const list = merged.features.map((f) => ({
+            provinsi: f.properties.provinsi,
+            ibukota: f.properties.ibukota,
+            lat: f.properties.lat,
+            lng: f.properties.lng,
+          }));
+          onDataLoaded(list);
+        }
+
+        const jakarta = merged.features.find(
+          (f) => normalize(f.properties.provinsi) === "dki jakarta",
+        );
+
+        if (jakarta) {
+          setSelected(createSelectedProvince(jakarta.properties));
+        }
+      },
+    });
+  }, [onDataLoaded]);
+
+  useEffect(() => {
+    if (selectedLocation && baseData) {
+      const nama = normalize(selectedLocation.provinsi);
+      const prov = baseData.features.find(
+        (f) => normalize(f.properties.provinsi) === nama,
+      );
+
+      if (prov) {
+        // Search selection comes from the dashboard and must update the map detail panel.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setSelected(createSelectedProvince(prov.properties));
+      }
+    }
+  }, [selectedLocation, baseData]);
+
+  const dataMap = useMemo(() => {
+    if (!baseData) return null;
+    if (!filters) return baseData;
+
+    const filteredFeatures = baseData.features.filter((f) => {
+      const luas = f.properties.luas || 0;
+      const pulau = f.properties.jumlah_pulau || 0;
+
+      let passArea = false;
+      if (!filters.area.large && !filters.area.medium && !filters.area.small) passArea = true;
+      if (filters.area.large && luas >= 50000) passArea = true;
+      if (filters.area.medium && luas >= 10000 && luas < 50000) passArea = true;
+      if (filters.area.small && luas < 10000) passArea = true;
+
+      let passIsland = false;
+      if (filters.islandCount === "all") passIsland = true;
+      if (filters.islandCount === ">1000" && pulau > 1000) passIsland = true;
+      if (filters.islandCount === "100-1000" && pulau >= 100 && pulau <= 1000) passIsland = true;
+      if (filters.islandCount === "<100" && pulau < 100) passIsland = true;
+
+      return passArea && passIsland;
+    });
+
+    return { ...baseData, features: filteredFeatures };
+  }, [baseData, filters]);
+
+  const getColor = (value) => {
+    if (mode === "luas") {
+      return value > 50000 ? "#075985" : value >= 10000 ? "#0284c7" : "#93c5fd";
+    }
+
+    if (mode === "pulau") {
+      return value > 1000 ? "#0f766e" : value >= 100 ? "#14b8a6" : "#99f6e4";
+    }
+
+    return "#cbd5e1";
+  };
+
+  const style = (feature) => {
+    const isSelected = normalize(feature.properties.provinsi) === selectedName;
+
+    if (mode === "ibukota") {
+      return {
+        fillOpacity: isSelected ? 0.18 : 0,
+        fillColor: "#f59e0b",
+        weight: isSelected ? 3 : 1,
+        color: isSelected ? "#f59e0b" : "#cbd5e1",
+      };
+    }
+
+    const value =
+      mode === "luas" ? feature.properties.luas : feature.properties.jumlah_pulau;
+
+    return {
+      fillColor: getColor(value),
+      weight: isSelected ? 4 : 1,
+      color: isSelected ? "#f59e0b" : "white",
+      fillOpacity: isSelected ? 0.95 : 0.78,
+      dashArray: isSelected ? "6 4" : undefined,
+    };
+  };
+
+  const onEachFeature = (feature, layer) => {
+    layer.on({
+      click: () => {
+        setSelected(createSelectedProvince(feature.properties));
+        layer.bringToFront();
+      },
+    });
+  };
+
+  const onEachCapital = (f, layer) => {
+    layer.on({
+      click: () => {
+        const nama = normalize(f.properties.provinsi);
+        const prov = baseData?.features.find(
+          (d) => normalize(d.properties.provinsi) === nama,
+        );
+
+        setSelected({
+          provinsi: f.properties.provinsi,
+          ibukota: f.properties.ibukota,
+          luas: prov?.properties.luas,
+          pulau: prov?.properties.jumlah_pulau,
+          lat: f.geometry.coordinates[1],
+          lng: f.geometry.coordinates[0],
+        });
+      },
+    });
+  };
+
+  return (
+    <section className="grid h-full grid-cols-1 gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(320px,0.9fr)]">
+      <div className="relative z-0 h-[560px] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="absolute left-4 top-4 z-[500] rounded-lg bg-white/95 px-3 py-2 shadow-sm ring-1 ring-slate-200 backdrop-blur">
+          <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
+            Layer aktif
+          </p>
+          <p className="text-sm font-semibold text-slate-900">
+            {mapModes.find((item) => item.id === mode)?.label}
+          </p>
+        </div>
+
+        <MapContainer
+          center={[-2.5, 118]}
+          zoom={5}
+          zoomControl={false}
+          className="h-full w-full"
+        >
+          <ZoomControl position="bottomright" />
+          <ResizeMap />
+          <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+
+          <LayerControl mode={mode} setMode={setMode} />
+
+          {selectedLocation && <FlyToLocation location={selectedLocation} />}
+
+          {dataMap && (
+            <GeoJSON
+              key={`${JSON.stringify(filters)}-${mode}-${selectedName || "none"}`}
+              data={dataMap}
+              style={style}
+              onEachFeature={onEachFeature}
+            />
+          )}
+
+          {mode === "ibukota" && (
+            <GeoJSON
+              data={ibukotaGeoJSON}
+              pointToLayer={(f, latlng) => L.marker(latlng)}
+              onEachFeature={onEachCapital}
+            />
+          )}
+        </MapContainer>
+
+        <MapLegend mode={mode} />
+      </div>
+
+      <ProvinceDetailPanel selected={selected} />
+    </section>
+  );
+}

@@ -3,8 +3,8 @@ import { MapContainer, TileLayer, GeoJSON, ZoomControl, useMap } from "react-lea
 import Papa from "papaparse";
 import L from "leaflet";
 
-import geojsonData from "../data/provinsi.json";
-import ibukotaGeoJSON from "../data/ibukota.json";
+import geojsonUrl from "../data/provinsi.json?url";
+import ibukotaUrl from "../data/ibukota.json?url";
 import csvFile from "../data/data.csv?url";
 import "../styles/map.css";
 
@@ -97,7 +97,7 @@ function FlyToLocation({ location }) {
   const map = useMap();
 
   useEffect(() => {
-    if (location) {
+    if (location?.lat && location?.lng) {
       map.flyTo([location.lat, location.lng], 8);
     }
   }, [location, map]);
@@ -241,17 +241,51 @@ function ProvinceDetailPanel({ selected }) {
   );
 }
 
-export default function MapView({ filters, onDataLoaded, selectedLocation }) {
+export default function MapView({
+  filters,
+  onDataLoaded,
+  onManualSelect,
+  selectedLocation,
+}) {
   const [baseData, setBaseData] = useState(null);
+  const [capitalData, setCapitalData] = useState(null);
+  const [loadError, setLoadError] = useState("");
   const [mode, setMode] = useState("luas");
   const [selected, setSelected] = useState(null);
-  const selectedName = normalize(selected?.provinsi);
+  const selectedFromSearch = useMemo(() => {
+    if (!selectedLocation || !baseData) return null;
+
+    const nama = normalize(selectedLocation.provinsi);
+    const prov = baseData.features.find(
+      (f) => normalize(f.properties.provinsi) === nama,
+    );
+
+    return prov ? createSelectedProvince(prov.properties) : null;
+  }, [selectedLocation, baseData]);
+  const activeSelected = selectedFromSearch || selected;
+  const selectedName = normalize(activeSelected?.provinsi);
 
   useEffect(() => {
-    Papa.parse(csvFile, {
-      download: true,
-      header: true,
-      complete: (res) => {
+    let isMounted = true;
+
+    async function loadMapData() {
+      try {
+        const [geoResponse, capitalResponse, csvResponse] = await Promise.all([
+          fetch(geojsonUrl),
+          fetch(ibukotaUrl),
+          fetch(csvFile),
+        ]);
+
+        if (!geoResponse.ok || !capitalResponse.ok || !csvResponse.ok) {
+          throw new Error("Gagal memuat data peta.");
+        }
+
+        const [geojsonData, ibukotaGeoJSON, csvText] = await Promise.all([
+          geoResponse.json(),
+          capitalResponse.json(),
+          csvResponse.text(),
+        ]);
+        const res = Papa.parse(csvText, { header: true });
         const csvMap = {};
         const capitalMap = {};
 
@@ -259,7 +293,7 @@ export default function MapView({ filters, onDataLoaded, selectedLocation }) {
           if (d.Provinsi) {
             csvMap[normalize(d.Provinsi)] = {
               luas: parseFloat(d.Luas_Wilayah) || 0,
-              jumlah_pulau: parseInt(d.Jumlah_Pulau) || 0,
+              jumlah_pulau: parseInt(d.Jumlah_Pulau, 10) || 0,
             };
           }
         });
@@ -290,7 +324,11 @@ export default function MapView({ filters, onDataLoaded, selectedLocation }) {
           }),
         };
 
+        if (!isMounted) return;
+
         setBaseData(merged);
+        setCapitalData(ibukotaGeoJSON);
+        setLoadError("");
 
         if (onDataLoaded) {
           const list = merged.features.map((f) => ({
@@ -309,24 +347,19 @@ export default function MapView({ filters, onDataLoaded, selectedLocation }) {
         if (jakarta) {
           setSelected(createSelectedProvince(jakarta.properties));
         }
-      },
-    });
-  }, [onDataLoaded]);
-
-  useEffect(() => {
-    if (selectedLocation && baseData) {
-      const nama = normalize(selectedLocation.provinsi);
-      const prov = baseData.features.find(
-        (f) => normalize(f.properties.provinsi) === nama,
-      );
-
-      if (prov) {
-        // Search selection comes from the dashboard and must update the map detail panel.
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setSelected(createSelectedProvince(prov.properties));
+      } catch (error) {
+        if (isMounted) {
+          setLoadError(error.message || "Gagal memuat data peta.");
+        }
       }
     }
-  }, [selectedLocation, baseData]);
+
+    loadMapData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [onDataLoaded]);
 
   const dataMap = useMemo(() => {
     if (!baseData) return null;
@@ -393,6 +426,7 @@ export default function MapView({ filters, onDataLoaded, selectedLocation }) {
   const onEachFeature = (feature, layer) => {
     layer.on({
       click: () => {
+        if (onManualSelect) onManualSelect();
         setSelected(createSelectedProvince(feature.properties));
         layer.bringToFront();
       },
@@ -402,6 +436,7 @@ export default function MapView({ filters, onDataLoaded, selectedLocation }) {
   const onEachCapital = (f, layer) => {
     layer.on({
       click: () => {
+        if (onManualSelect) onManualSelect();
         const nama = normalize(f.properties.provinsi);
         const prov = baseData?.features.find(
           (d) => normalize(d.properties.provinsi) === nama,
@@ -454,9 +489,9 @@ export default function MapView({ filters, onDataLoaded, selectedLocation }) {
             />
           )}
 
-          {mode === "ibukota" && (
+          {mode === "ibukota" && capitalData && (
             <GeoJSON
-              data={ibukotaGeoJSON}
+              data={capitalData}
               pointToLayer={(f, latlng) => L.marker(latlng)}
               onEachFeature={onEachCapital}
             />
@@ -464,9 +499,15 @@ export default function MapView({ filters, onDataLoaded, selectedLocation }) {
         </MapContainer>
 
         <MapLegend mode={mode} />
+
+        {loadError && (
+          <div className="absolute inset-x-4 top-20 z-[500] rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 shadow-sm">
+            {loadError}
+          </div>
+        )}
       </div>
 
-      <ProvinceDetailPanel selected={selected} />
+      <ProvinceDetailPanel selected={activeSelected} />
     </section>
   );
 }

@@ -130,7 +130,7 @@
         {
             "type": "Feature",
             "properties": {
-                "provinsi": "Bangka Belitung",
+                "provinsi": "Kepulauan Bangka Belitung",
                 "ibukota": "Pangkal Pinang"
             },
             "geometry": {

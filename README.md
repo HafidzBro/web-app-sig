@@ -1,16 +1,40 @@
-# React + Vite
+# Nusantara dalam Angka
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Aplikasi web SIG berbasis React, Vite, Leaflet, dan Tailwind CSS untuk menampilkan data wilayah provinsi Indonesia. Aplikasi memuat peta interaktif, filter luas wilayah dan jumlah pulau, pencarian provinsi atau ibu kota, panel detail provinsi, serta tabel referensi data.
 
-Currently, two official plugins are available:
+## Fitur
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Peta provinsi Indonesia dengan layer luas wilayah, jumlah pulau, dan ibu kota.
+- Pencarian provinsi atau ibu kota dengan fokus otomatis ke lokasi terpilih.
+- Filter wilayah berdasarkan skala luas dan jumlah pulau.
+- Ringkasan total provinsi, luas wilayah, dan jumlah pulau dari dataset CSV.
+- Tabel referensi data dan ekspor CSV.
+- Layout responsif dengan sidebar desktop dan drawer navigasi di layar kecil.
 
-## React Compiler
+## Menjalankan Proyek
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```bash
+npm install
+npm run dev
+```
 
-## Expanding the ESLint configuration
+Build produksi:
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```bash
+npm run build
+npm run preview
+```
+
+Validasi kode:
+
+```bash
+npm run lint
+```
+
+## Struktur Data
+
+- `src/data/data.csv`: data luas wilayah, persentase luas, dan jumlah pulau per provinsi.
+- `src/data/provinsi.json`: GeoJSON batas wilayah provinsi.
+- `src/data/ibukota.json`: GeoJSON titik ibu kota provinsi.
+
+Nama provinsi pada ketiga file data perlu konsisten agar proses penggabungan data peta berjalan lengkap.

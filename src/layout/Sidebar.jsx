@@ -1,78 +1,71 @@
 import { Link, useLocation } from "react-router-dom";
 
-export default function Sidebar() {
-  // BACA URL SAAT INI:
+export default function Sidebar({ isOpen, onClose }) {
   const location = useLocation();
 
+  const links = [
+    { to: "/", label: "Dashboard", icon: "dashboard" },
+    { to: "/data", label: "Data Reference", icon: "table_chart" },
+  ];
+
   return (
-    <nav className="bg-slate-900 text-white font-inter text-sm font-medium tracking-tight w-64 border-r border-slate-800 fixed left-0 top-0 h-full z-40 flex flex-col">
-      {/* Bagian Logo & Judul */}
-      <div className="p-6 border-b border-slate-800">
-        <div className="flex items-center gap-3">
-          <div>
-            <h1 className="text-white font-bold text-base">
-              Nusantara dalam Angka
-            </h1>
-            <p className="text-slate-400 text-xs">Geo-Inteligence 2025</p>
+    <>
+      <nav
+        className={`fixed left-0 top-0 z-50 flex h-full w-64 flex-col border-r border-slate-800 bg-slate-900 font-inter text-sm font-medium tracking-tight text-white transition-transform duration-300 lg:translate-x-0 ${
+          isOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <div className="border-b border-slate-800 p-6">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h1 className="text-base font-bold text-white">Nusantara dalam Angka</h1>
+              <p className="text-xs text-slate-400">Geo-Intelligence 2025</p>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-800 hover:text-white lg:hidden"
+              aria-label="Tutup navigasi"
+            >
+              <span className="material-symbols-outlined text-[20px]">close</span>
+            </button>
           </div>
         </div>
-      </div>
 
-      {/* Bagian Menu Navigasi Dinamis */}
-      <div className="flex-1 py-4">
-        <ul className="space-y-1">
-          <li>
-            <Link
-              to="/"
-              // Logika dinamis: Jika URL adalah "/", pakai warna biru. Jika tidak, pakai warna abu-abu.
-              className={`py-3 px-4 flex items-center gap-3 transition-all duration-200 border-l-4 ${
-                location.pathname === "/"
-                  ? "bg-blue-600/20 text-blue-400 border-blue-500" // <--- STYLE AKTIF
-                  : "text-slate-400 border-transparent hover:text-white hover:bg-slate-800" // <--- STYLE PASIF
-              }`}
-            >
-              <span className="material-symbols-outlined">dashboard</span>
-              <span>Dashboard</span>
-            </Link>
-          </li>
-          <li>
-            <Link
-              to="/data"
-              // Logika dinamis: Jika URL adalah "/data", pakai warna biru. Jika tidak, pakai warna abu-abu.
-              className={`py-3 px-4 flex items-center gap-3 transition-all duration-200 border-l-4 ${
-                location.pathname === "/data"
-                  ? "bg-blue-600/20 text-blue-400 border-blue-500" // <--- STYLE AKTIF
-                  : "text-slate-400 border-transparent hover:text-white hover:bg-slate-800" // <--- STYLE PASIF
-              }`}
-            >
-              <span className="material-symbols-outlined">table_chart</span>
-              <span>Data Reference</span>
-            </Link>
-          </li>
-        </ul>
-      </div>
-    </nav>
+        <div className="flex-1 py-4">
+          <ul className="space-y-1">
+            {links.map((link) => {
+              const isActive = location.pathname === link.to;
+
+              return (
+                <li key={link.to}>
+                  <Link
+                    to={link.to}
+                    onClick={onClose}
+                    className={`flex items-center gap-3 border-l-4 px-4 py-3 transition-all duration-200 ${
+                      isActive
+                        ? "border-blue-500 bg-blue-600/20 text-blue-400"
+                        : "border-transparent text-slate-400 hover:bg-slate-800 hover:text-white"
+                    }`}
+                  >
+                    <span className="material-symbols-outlined">{link.icon}</span>
+                    <span>{link.label}</span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      </nav>
+
+      {isOpen && (
+        <button
+          type="button"
+          className="fixed inset-0 z-40 bg-slate-950/40 backdrop-blur-[1px] lg:hidden"
+          onClick={onClose}
+          aria-label="Tutup overlay navigasi"
+        />
+      )}
+    </>
   );
 }
-
-/* import { Link } from "react-router-dom";
-export default function Sidebar() {
-    return (
-        <div style={{
-            width: "220px",
-            height: "100vh",
-            background: "#1e3a8a",
-            color: "white",
-            padding: "20px"
-        }}>
-            <h2>Nusantara</h2>
-
-            <Link to="/" style={{ display: "block", margin: "10px 0", color: "white" }}>
-                Dashboard
-            </Link>
-            <Link to="/data" style={{ display: "block", margin: "10px 0", color: "white" }}>
-                Data Reference
-            </Link>
-        </div>
-    );
-} */

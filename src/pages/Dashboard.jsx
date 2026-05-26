@@ -1,17 +1,26 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import Papa from "papaparse";
 import MapView from "../components/MapView";
 import SummaryCard from "../components/SummaryCard";
+import csvFile from "../data/data.csv?url";
 
 const defaultFilters = {
   area: { large: true, medium: true, small: true },
   islandCount: "all",
 };
 
-const summaryItems = [
-  { title: "Total Provinces", value: "38", icon: "flag", tone: "blue" },
-  { title: "Total Area", value: "1.9M", unit: "km2", icon: "landscape", tone: "teal" },
-  { title: "Total Islands", value: "17,508", icon: "water", tone: "amber" },
-];
+const initialSummary = {
+  provinces: 0,
+  area: 0,
+  islands: 0,
+};
+
+function formatCompact(value) {
+  return Intl.NumberFormat("id-ID", {
+    maximumFractionDigits: 1,
+    notation: "compact",
+  }).format(value);
+}
 
 function SearchBox({ value, data, onChange, onSelect, onClear }) {
   const results = useMemo(() => {
@@ -238,6 +247,52 @@ export default function Dashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchData, setSearchData] = useState([]);
   const [selectedLocation, setSelectedLocation] = useState(null);
+  const [summary, setSummary] = useState(initialSummary);
+
+  useEffect(() => {
+    Papa.parse(csvFile, {
+      download: true,
+      header: true,
+      complete: (res) => {
+        const validRows = res.data.filter((item) => item.Provinsi);
+        const totals = validRows.reduce(
+          (acc, item) => ({
+            provinces: acc.provinces + 1,
+            area: acc.area + (Number(item.Luas_Wilayah) || 0),
+            islands: acc.islands + (Number(item.Jumlah_Pulau) || 0),
+          }),
+          initialSummary,
+        );
+
+        setSummary(totals);
+      },
+    });
+  }, []);
+
+  const summaryItems = useMemo(
+    () => [
+      {
+        title: "Total Provinces",
+        value: summary.provinces.toLocaleString("id-ID"),
+        icon: "flag",
+        tone: "blue",
+      },
+      {
+        title: "Total Area",
+        value: formatCompact(summary.area),
+        unit: "km2",
+        icon: "landscape",
+        tone: "teal",
+      },
+      {
+        title: "Total Islands",
+        value: summary.islands.toLocaleString("id-ID"),
+        icon: "water",
+        tone: "amber",
+      },
+    ],
+    [summary],
+  );
 
   const handleAreaChange = (scale) => {
     setDraftFilters((prev) => ({
@@ -268,7 +323,7 @@ export default function Dashboard() {
 
   return (
     <>
-      <main className="h-[calc(100vh-64px)] overflow-y-auto bg-slate-50 p-6">
+      <main className="h-[calc(100vh-64px)] overflow-y-auto bg-slate-50 p-4 sm:p-6">
         <div className="mb-6 flex flex-col gap-2">
           <p className="text-sm font-semibold text-blue-700">Dashboard</p>
           <h1 className="text-2xl font-bold tracking-tight text-slate-950">
@@ -304,6 +359,7 @@ export default function Dashboard() {
         <MapView
           filters={appliedFilters}
           onDataLoaded={setSearchData}
+          onManualSelect={handleClearSearch}
           selectedLocation={selectedLocation}
         />
       </main>

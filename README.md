@@ -2,14 +2,26 @@
 
 Aplikasi web SIG berbasis React, Vite, Leaflet, dan Tailwind CSS untuk menampilkan data wilayah provinsi Indonesia. Aplikasi memuat peta interaktif, filter luas wilayah dan jumlah pulau, pencarian provinsi atau ibu kota, panel detail provinsi, serta tabel referensi data.
 
-## Fitur
+## Fitur Utama
 
-- Peta provinsi Indonesia dengan layer luas wilayah, jumlah pulau, dan ibu kota.
-- Pencarian provinsi atau ibu kota dengan fokus otomatis ke lokasi terpilih.
-- Filter wilayah berdasarkan skala luas dan jumlah pulau.
-- Ringkasan total provinsi, luas wilayah, dan jumlah pulau dari dataset CSV.
-- Tabel referensi data dan ekspor CSV.
-- Layout responsif dengan sidebar desktop dan drawer navigasi di layar kecil.
+- **Peta Interaktif Spasial Indonesia:**
+  - Layer tematik luas wilayah (choropleth), jumlah pulau, dan sebaran ibu kota provinsi.
+  - Pilihan Base Map: **Clean Light (CartoDB Positron)**, **Street (OSM)**, dan **Satelit (ESRI)** dengan atribusi standar.
+  - Hover tooltip informatif instan pada poligon provinsi dan titik ibu kota.
+  - Pin kustom beranimasi untuk titik ibu kota.
+  - Tombol **Reset View** satu klik untuk kembali ke tampilan menyeluruh kepulauan Indonesia.
+- **Pencarian & Filter Cerdas:**
+  - Pencarian cepat provinsi / ibu kota dengan efek fly-to otomatis.
+  - Advanced Filter berdasarkan skala luas wilayah (besar/menengah/kecil) dan kuantitas pulau.
+- **Tabel & Master Data Terpadu:**
+  - Sorting kolom tabel (berdasarkan nama provinsi, ibu kota, luas wilayah, dan jumlah pulau).
+  - Pencarian instan langsung di dalam tabel.
+  - Quick statistics banner (total provinsi, rata-rata luas wilayah, provinsi terluas & terkecil).
+  - Ekspor CSV data master atau data hasil pencarian.
+- **Arsitektur Performa Tinggi:**
+  - Manajemen state terpusat via `ProvinceContext` (Single Source of Truth), menghilangkan duplikasi fetch dan parse file CSV & GeoJSON.
+  - Indikator pemuatan data (loading state) halus.
+
 
 ## Menjalankan Proyek
 

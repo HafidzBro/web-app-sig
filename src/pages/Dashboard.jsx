@@ -1,8 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
-import Papa from "papaparse";
+import { useMemo, useState } from "react";
 import MapView from "../components/MapView";
 import SummaryCard from "../components/SummaryCard";
-import csvFile from "../data/data.csv?url";
+import { useProvince } from "../context/ProvinceContext";
 
 const defaultFilters = {
   area: { large: true, medium: true, small: true },
@@ -241,33 +240,22 @@ function FilterDrawer({
 }
 
 export default function Dashboard() {
+  const { summary, geoData, isLoading } = useProvince();
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [draftFilters, setDraftFilters] = useState(defaultFilters);
   const [appliedFilters, setAppliedFilters] = useState(defaultFilters);
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchData, setSearchData] = useState([]);
   const [selectedLocation, setSelectedLocation] = useState(null);
-  const [summary, setSummary] = useState(initialSummary);
 
-  useEffect(() => {
-    Papa.parse(csvFile, {
-      download: true,
-      header: true,
-      complete: (res) => {
-        const validRows = res.data.filter((item) => item.Provinsi);
-        const totals = validRows.reduce(
-          (acc, item) => ({
-            provinces: acc.provinces + 1,
-            area: acc.area + (Number(item.Luas_Wilayah) || 0),
-            islands: acc.islands + (Number(item.Jumlah_Pulau) || 0),
-          }),
-          initialSummary,
-        );
-
-        setSummary(totals);
-      },
-    });
-  }, []);
+  const searchData = useMemo(() => {
+    if (!geoData?.features) return [];
+    return geoData.features.map((f) => ({
+      provinsi: f.properties.provinsi,
+      ibukota: f.properties.ibukota,
+      lat: f.properties.lat,
+      lng: f.properties.lng,
+    }));
+  }, [geoData]);
 
   const summaryItems = useMemo(
     () => [
@@ -358,10 +346,10 @@ export default function Dashboard() {
 
         <MapView
           filters={appliedFilters}
-          onDataLoaded={setSearchData}
           onManualSelect={handleClearSearch}
           selectedLocation={selectedLocation}
         />
+
       </main>
 
       <FilterDrawer

@@ -1,11 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
-import { MapContainer, TileLayer, GeoJSON, ZoomControl, useMap } from "react-leaflet";
-import Papa from "papaparse";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  MapContainer,
+  TileLayer,
+  GeoJSON,
+  ZoomControl,
+  useMap,
+} from "react-leaflet";
 import L from "leaflet";
-
-import geojsonUrl from "../data/provinsi.json?url";
-import ibukotaUrl from "../data/ibukota.json?url";
-import csvFile from "../data/data.csv?url";
+import { useProvince } from "../context/ProvinceContext";
 import "../styles/map.css";
 
 const normalize = (str) => str?.toLowerCase().trim();
@@ -14,6 +16,32 @@ const mapModes = [
   { id: "luas", label: "Area", icon: "map" },
   { id: "pulau", label: "Islands", icon: "hub" },
   { id: "ibukota", label: "Capitals", icon: "location_city" },
+];
+
+const baseMaps = [
+  {
+    id: "positron",
+    label: "Clean Light",
+    icon: "light_mode",
+    url: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+    attribution:
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+  },
+  {
+    id: "osm",
+    label: "Street",
+    icon: "map",
+    url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    attribution:
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+  },
+  {
+    id: "satellite",
+    label: "Satelit",
+    icon: "satellite_alt",
+    url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    attribution: "Tiles &copy; Esri &mdash; Source: Esri, USGS",
+  },
 ];
 
 const legends = {
@@ -52,45 +80,123 @@ function createSelectedProvince(properties) {
   };
 }
 
-function LayerControl({ mode, setMode }) {
+const capitalIcon = L.divIcon({
+  className: "capital-marker-icon",
+  html: `
+    <div class="capital-pin">
+      <div class="capital-pin-ring"></div>
+      <div class="capital-pin-dot"></div>
+    </div>
+  `,
+  iconSize: [24, 24],
+  iconAnchor: [12, 12],
+});
+
+function MapControls({ mode, setMode, baseMap, setBaseMap }) {
+  return (
+    <div className="absolute right-4 top-4 z-[500] flex flex-col items-end gap-2 sm:flex-row sm:items-center">
+      {/* Layer Mode Capsule */}
+      <div
+        className="flex items-center rounded-full border border-slate-200/90 bg-white/95 p-1 shadow-md backdrop-blur-md"
+        onMouseDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {mapModes.map((item) => {
+          const isActive = mode === item.id;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setMode(item.id)}
+              title={item.label}
+              className={`group relative flex h-8 items-center rounded-full transition-all duration-300 ease-out cursor-pointer ${
+                isActive
+                  ? "bg-blue-600 text-white px-3 shadow-xs"
+                  : "w-8 justify-center text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+              }`}
+            >
+              <span className="material-symbols-outlined text-[18px] shrink-0">
+                {item.icon}
+              </span>
+              <span
+                className={`whitespace-nowrap text-xs font-bold transition-all duration-300 ease-out ${
+                  isActive
+                    ? "max-w-[80px] opacity-100 ml-1.5"
+                    : "max-w-0 opacity-0 overflow-hidden"
+                }`}
+              >
+                {item.label}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Base Map Capsule */}
+      <div
+        className="flex items-center rounded-full border border-slate-200/90 bg-white/95 p-1 shadow-md backdrop-blur-md"
+        onMouseDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {baseMaps.map((b) => {
+          const isActive = baseMap === b.id;
+          return (
+            <button
+              key={b.id}
+              type="button"
+              onClick={() => setBaseMap(b.id)}
+              title={`Peta Dasar: ${b.label}`}
+              className={`group relative flex h-8 items-center rounded-full transition-all duration-300 ease-out cursor-pointer ${
+                isActive
+                  ? "bg-slate-900 text-white px-3 shadow-xs"
+                  : "w-8 justify-center text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+              }`}
+            >
+              <span className="material-symbols-outlined text-[17px] shrink-0">
+                {b.icon}
+              </span>
+              <span
+                className={`whitespace-nowrap text-xs font-bold transition-all duration-300 ease-out ${
+                  isActive
+                    ? "max-w-[90px] opacity-100 ml-1.5"
+                    : "max-w-0 opacity-0 overflow-hidden"
+                }`}
+              >
+                {b.label}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function ResetViewButton() {
   const map = useMap();
 
-  useEffect(() => {
-    const control = L.control({ position: "topright" });
-
-    control.onAdd = function () {
-      const div = L.DomUtil.create("div", "custom-control");
-      L.DomEvent.disableClickPropagation(div);
-
-      div.innerHTML = mapModes
-        .map(
-          (item) => `
-            <button
-              type="button"
-              data-mode="${item.id}"
-              class="${mode === item.id ? "is-active" : ""}"
-              title="${item.label}"
-            >
-              <span class="material-symbols-outlined">${item.icon}</span>
-              <span>${item.label}</span>
-            </button>
-          `,
-        )
-        .join("");
-
-      div.querySelectorAll("button").forEach((button) => {
-        button.addEventListener("click", () => setMode(button.dataset.mode));
-      });
-
-      return div;
-    };
-
-    control.addTo(map);
-
-    return () => control.remove();
-  }, [map, mode, setMode]);
-
-  return null;
+  return (
+    <div
+      className="absolute bottom-[28px] right-[58px] z-[500]"
+      onMouseDown={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
+      onDoubleClick={(e) => e.stopPropagation()}
+    >
+      <button
+        type="button"
+        onClick={() => {
+          map.flyTo([-2.5, 118], 5, { duration: 1.2 });
+        }}
+        className="flex h-[34px] items-center gap-1.5 rounded-lg border border-slate-200 bg-white/95 px-3 text-xs font-bold text-slate-700 shadow-md transition hover:bg-slate-100 hover:text-slate-950 backdrop-blur active:scale-95"
+        title="Reset tampilan peta ke seluruh Indonesia"
+      >
+        <span className="material-symbols-outlined text-[17px] text-blue-600">
+          restart_alt
+        </span>
+        <span>Reset View</span>
+      </button>
+    </div>
+  );
 }
 
 function FlyToLocation({ location }) {
@@ -98,7 +204,7 @@ function FlyToLocation({ location }) {
 
   useEffect(() => {
     if (location?.lat && location?.lng) {
-      map.flyTo([location.lat, location.lng], 8);
+      map.flyTo([location.lat, location.lng], 8, { duration: 1.2 });
     }
   }, [location, map]);
 
@@ -134,15 +240,22 @@ function MapLegend({ mode }) {
       </p>
       <div className="mt-3 space-y-2">
         {legend.items.map((item) => (
-          <div key={item.label} className="flex items-center justify-between gap-3">
+          <div
+            key={item.label}
+            className="flex items-center justify-between gap-3"
+          >
             <div className="flex items-center gap-2">
               <span
                 className="h-3 w-6 rounded-sm ring-1 ring-black/5"
                 style={{ backgroundColor: item.color }}
               />
-              <span className="text-xs font-semibold text-slate-700">{item.label}</span>
+              <span className="text-xs font-semibold text-slate-700">
+                {item.label}
+              </span>
             </div>
-            <span className="text-[11px] font-medium text-slate-400">{legend.unit}</span>
+            <span className="text-[11px] font-medium text-slate-400">
+              {legend.unit}
+            </span>
           </div>
         ))}
       </div>
@@ -161,7 +274,11 @@ function DetailMetric({ icon, label, value, unit }) {
       </p>
       <p className="mt-1 text-xl font-bold text-slate-950">
         {value}
-        {unit && <span className="ml-1 text-sm font-semibold text-slate-500">{unit}</span>}
+        {unit && (
+          <span className="ml-1 text-sm font-semibold text-slate-500">
+            {unit}
+          </span>
+        )}
       </p>
     </div>
   );
@@ -172,7 +289,9 @@ function ProvinceDetailPanel({ selected }) {
     return (
       <div className="flex min-h-[500px] flex-1 flex-col items-center justify-center bg-slate-50 px-6 text-center text-slate-500">
         <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-white text-blue-700 shadow-sm ring-1 ring-slate-200">
-          <span className="material-symbols-outlined text-[30px]">touch_app</span>
+          <span className="material-symbols-outlined text-[30px]">
+            touch_app
+          </span>
         </div>
         <p className="text-sm font-semibold text-slate-700">Pilih provinsi</p>
         <p className="mt-1 max-w-52 text-sm">
@@ -183,19 +302,23 @@ function ProvinceDetailPanel({ selected }) {
   }
 
   return (
-    <aside className="flex min-h-[500px] flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+    <aside className="flex min-h-[420px] flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm sm:min-h-[500px] max-h-[calc(100vh-2rem)] xl:max-h-[560px]">
       <div className="border-b border-slate-200 bg-slate-950 p-6 text-white">
         <p className="text-xs font-bold uppercase tracking-wider text-blue-200">
           Detail Provinsi
         </p>
-        <h2 className="mt-2 text-2xl font-bold tracking-tight">{selected.provinsi}</h2>
+        <h2 className="mt-2 text-2xl font-bold tracking-tight">
+          {selected.provinsi}
+        </h2>
         <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-sm text-slate-100 ring-1 ring-white/15">
-          <span className="material-symbols-outlined text-[17px]">location_city</span>
+          <span className="material-symbols-outlined text-[17px]">
+            location_city
+          </span>
           <span>{selected.ibukota || "-"}</span>
         </div>
       </div>
 
-      <div className="flex-1 space-y-4 bg-slate-50 p-5">
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto bg-slate-50 p-5">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
           <DetailMetric
             icon="landscape"
@@ -243,15 +366,16 @@ function ProvinceDetailPanel({ selected }) {
 
 export default function MapView({
   filters,
-  onDataLoaded,
   onManualSelect,
   selectedLocation,
 }) {
-  const [baseData, setBaseData] = useState(null);
-  const [capitalData, setCapitalData] = useState(null);
-  const [loadError, setLoadError] = useState("");
+  const { geoData: baseData, capitalData, isLoading, error: loadError } =
+    useProvince();
+
   const [mode, setMode] = useState("luas");
+  const [baseMap, setBaseMap] = useState("positron");
   const [selected, setSelected] = useState(null);
+
   const selectedFromSearch = useMemo(() => {
     if (!selectedLocation || !baseData) return null;
 
@@ -262,104 +386,21 @@ export default function MapView({
 
     return prov ? createSelectedProvince(prov.properties) : null;
   }, [selectedLocation, baseData]);
+
   const activeSelected = selectedFromSearch || selected;
   const selectedName = normalize(activeSelected?.provinsi);
 
+  // Set default selected to DKI Jakarta on initial load if none selected
   useEffect(() => {
-    let isMounted = true;
-
-    async function loadMapData() {
-      try {
-        const [geoResponse, capitalResponse, csvResponse] = await Promise.all([
-          fetch(geojsonUrl),
-          fetch(ibukotaUrl),
-          fetch(csvFile),
-        ]);
-
-        if (!geoResponse.ok || !capitalResponse.ok || !csvResponse.ok) {
-          throw new Error("Gagal memuat data peta.");
-        }
-
-        const [geojsonData, ibukotaGeoJSON, csvText] = await Promise.all([
-          geoResponse.json(),
-          capitalResponse.json(),
-          csvResponse.text(),
-        ]);
-        const res = Papa.parse(csvText, { header: true });
-        const csvMap = {};
-        const capitalMap = {};
-
-        res.data.forEach((d) => {
-          if (d.Provinsi) {
-            csvMap[normalize(d.Provinsi)] = {
-              luas: parseFloat(d.Luas_Wilayah) || 0,
-              jumlah_pulau: parseInt(d.Jumlah_Pulau, 10) || 0,
-            };
-          }
-        });
-
-        ibukotaGeoJSON.features.forEach((f) => {
-          const nama = normalize(f.properties.provinsi);
-
-          capitalMap[nama] = {
-            ibukota: f.properties.ibukota,
-            lat: f.geometry.coordinates[1],
-            lng: f.geometry.coordinates[0],
-          };
-        });
-
-        const merged = {
-          ...geojsonData,
-          features: geojsonData.features.map((f) => {
-            const nama = normalize(f.properties.provinsi);
-
-            return {
-              ...f,
-              properties: {
-                ...f.properties,
-                ...csvMap[nama],
-                ...capitalMap[nama],
-              },
-            };
-          }),
-        };
-
-        if (!isMounted) return;
-
-        setBaseData(merged);
-        setCapitalData(ibukotaGeoJSON);
-        setLoadError("");
-
-        if (onDataLoaded) {
-          const list = merged.features.map((f) => ({
-            provinsi: f.properties.provinsi,
-            ibukota: f.properties.ibukota,
-            lat: f.properties.lat,
-            lng: f.properties.lng,
-          }));
-          onDataLoaded(list);
-        }
-
-        const jakarta = merged.features.find(
-          (f) => normalize(f.properties.provinsi) === "dki jakarta",
-        );
-
-        if (jakarta) {
-          setSelected(createSelectedProvince(jakarta.properties));
-        }
-      } catch (error) {
-        if (isMounted) {
-          setLoadError(error.message || "Gagal memuat data peta.");
-        }
+    if (baseData && !selected && !selectedLocation) {
+      const jakarta = baseData.features.find(
+        (f) => normalize(f.properties.provinsi) === "dki jakarta",
+      );
+      if (jakarta) {
+        setSelected(createSelectedProvince(jakarta.properties));
       }
     }
-
-    loadMapData();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [onDataLoaded]);
+  }, [baseData, selected, selectedLocation]);
 
   const dataMap = useMemo(() => {
     if (!baseData) return null;
@@ -370,7 +411,8 @@ export default function MapView({
       const pulau = f.properties.jumlah_pulau || 0;
 
       let passArea = false;
-      if (!filters.area.large && !filters.area.medium && !filters.area.small) passArea = true;
+      if (!filters.area.large && !filters.area.medium && !filters.area.small)
+        passArea = true;
       if (filters.area.large && luas >= 50000) passArea = true;
       if (filters.area.medium && luas >= 10000 && luas < 50000) passArea = true;
       if (filters.area.small && luas < 10000) passArea = true;
@@ -378,7 +420,8 @@ export default function MapView({
       let passIsland = false;
       if (filters.islandCount === "all") passIsland = true;
       if (filters.islandCount === ">1000" && pulau > 1000) passIsland = true;
-      if (filters.islandCount === "100-1000" && pulau >= 100 && pulau <= 1000) passIsland = true;
+      if (filters.islandCount === "100-1000" && pulau >= 100 && pulau <= 1000)
+        passIsland = true;
       if (filters.islandCount === "<100" && pulau < 100) passIsland = true;
 
       return passArea && passIsland;
@@ -389,7 +432,11 @@ export default function MapView({
 
   const getColor = (value) => {
     if (mode === "luas") {
-      return value > 50000 ? "#075985" : value >= 10000 ? "#0284c7" : "#93c5fd";
+      return value > 50000
+        ? "#075985"
+        : value >= 10000
+        ? "#0284c7"
+        : "#93c5fd";
     }
 
     if (mode === "pulau") {
@@ -404,27 +451,63 @@ export default function MapView({
 
     if (mode === "ibukota") {
       return {
-        fillOpacity: isSelected ? 0.18 : 0,
+        fillOpacity: isSelected ? 0.25 : 0.05,
         fillColor: "#f59e0b",
-        weight: isSelected ? 3 : 1,
-        color: isSelected ? "#f59e0b" : "#cbd5e1",
+        weight: isSelected ? 3.5 : 1,
+        color: isSelected ? "#d97706" : "#cbd5e1",
       };
     }
 
     const value =
-      mode === "luas" ? feature.properties.luas : feature.properties.jumlah_pulau;
+      mode === "luas"
+        ? feature.properties.luas
+        : feature.properties.jumlah_pulau;
 
     return {
       fillColor: getColor(value),
-      weight: isSelected ? 4 : 1,
-      color: isSelected ? "#f59e0b" : "white",
+      weight: isSelected ? 3.5 : 1,
+      color: isSelected ? "#1d4ed8" : "#ffffff",
       fillOpacity: isSelected ? 0.95 : 0.78,
-      dashArray: isSelected ? "6 4" : undefined,
     };
   };
 
   const onEachFeature = (feature, layer) => {
+    const p = feature.properties;
+    const metricText =
+      mode === "luas"
+        ? `Luas: ${formatNumber(p.luas)} km²`
+        : mode === "pulau"
+        ? `Pulau: ${formatNumber(p.jumlah_pulau)} pulau`
+        : `Ibu Kota: ${p.ibukota || "-"}`;
+
+    layer.bindTooltip(
+      `
+      <div class="map-tooltip">
+        <span class="map-tooltip-title">${p.provinsi}</span>
+        <span class="map-tooltip-sub">${metricText}</span>
+      </div>
+      `,
+      { sticky: true, className: "custom-leaflet-tooltip" },
+    );
+
     layer.on({
+      mouseover: (e) => {
+        const isSel = normalize(p.provinsi) === selectedName;
+        if (!isSel) {
+          e.target.setStyle({
+            weight: 2.5,
+            color: "#2563eb",
+            fillOpacity: 0.9,
+          });
+          e.target.bringToFront();
+        }
+      },
+      mouseout: (e) => {
+        const isSel = normalize(p.provinsi) === selectedName;
+        if (!isSel) {
+          e.target.setStyle(style(feature));
+        }
+      },
       click: () => {
         if (onManualSelect) onManualSelect();
         setSelected(createSelectedProvince(feature.properties));
@@ -434,13 +517,24 @@ export default function MapView({
   };
 
   const onEachCapital = (f, layer) => {
+    const nama = normalize(f.properties.provinsi);
+    const prov = baseData?.features.find(
+      (d) => normalize(d.properties.provinsi) === nama,
+    );
+
+    layer.bindTooltip(
+      `
+      <div class="map-tooltip">
+        <span class="map-tooltip-title">${f.properties.ibukota}</span>
+        <span class="map-tooltip-sub">Ibu Kota ${f.properties.provinsi}</span>
+      </div>
+      `,
+      { sticky: true, className: "custom-leaflet-tooltip" },
+    );
+
     layer.on({
       click: () => {
         if (onManualSelect) onManualSelect();
-        const nama = normalize(f.properties.provinsi);
-        const prov = baseData?.features.find(
-          (d) => normalize(d.properties.provinsi) === nama,
-        );
 
         setSelected({
           provinsi: f.properties.provinsi,
@@ -454,9 +548,13 @@ export default function MapView({
     });
   };
 
+  const activeBaseMapConfig =
+    baseMaps.find((b) => b.id === baseMap) || baseMaps[0];
+
   return (
     <section className="grid h-full grid-cols-1 gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(320px,0.9fr)]">
       <div className="relative z-0 h-[560px] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        {/* Layer aktif badge */}
         <div className="absolute left-4 top-4 z-[500] rounded-lg bg-white/95 px-3 py-2 shadow-sm ring-1 ring-slate-200 backdrop-blur">
           <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
             Layer aktif
@@ -466,6 +564,16 @@ export default function MapView({
           </p>
         </div>
 
+        {/* Loading Skeleton */}
+        {isLoading && (
+          <div className="absolute inset-0 z-[600] flex flex-col items-center justify-center bg-slate-100/80 backdrop-blur-xs">
+            <div className="h-10 w-10 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
+            <p className="mt-3 text-sm font-bold text-slate-800">
+              Memuat data spasial Nusantara...
+            </p>
+          </div>
+        )}
+
         <MapContainer
           center={[-2.5, 118]}
           zoom={5}
@@ -473,10 +581,21 @@ export default function MapView({
           className="h-full w-full"
         >
           <ZoomControl position="bottomright" />
+          <ResetViewButton />
           <ResizeMap />
-          <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
 
-          <LayerControl mode={mode} setMode={setMode} />
+          <TileLayer
+            key={activeBaseMapConfig.id}
+            url={activeBaseMapConfig.url}
+            attribution={activeBaseMapConfig.attribution}
+          />
+
+          <MapControls
+            mode={mode}
+            setMode={setMode}
+            baseMap={baseMap}
+            setBaseMap={setBaseMap}
+          />
 
           {selectedLocation && <FlyToLocation location={selectedLocation} />}
 
@@ -492,7 +611,9 @@ export default function MapView({
           {mode === "ibukota" && capitalData && (
             <GeoJSON
               data={capitalData}
-              pointToLayer={(f, latlng) => L.marker(latlng)}
+              pointToLayer={(f, latlng) =>
+                L.marker(latlng, { icon: capitalIcon })
+              }
               onEachFeature={onEachCapital}
             />
           )}

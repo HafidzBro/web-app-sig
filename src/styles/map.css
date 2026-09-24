@@ -1,48 +1,3 @@
-.custom-control {
-  display: flex;
-  gap: 4px;
-  padding: 6px;
-  border: 1px solid rgb(226 232 240);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.95);
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16);
-  backdrop-filter: blur(10px);
-}
-
-.custom-control button {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 36px;
-  padding: 8px 10px;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: rgb(71 85 105);
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1;
-  transition:
-    background-color 160ms ease,
-    color 160ms ease,
-    box-shadow 160ms ease;
-}
-
-.custom-control button:hover {
-  background: rgb(241 245 249);
-  color: rgb(15 23 42);
-}
-
-.custom-control button.is-active {
-  background: rgb(2 132 199);
-  color: white;
-  box-shadow: 0 8px 18px rgba(2, 132, 199, 0.28);
-}
-
-.custom-control .material-symbols-outlined {
-  font-size: 18px;
-}
 
 .leaflet-container {
   background: rgb(226 232 240);
@@ -68,4 +23,94 @@
 .leaflet-control-zoom a {
   border: 0 !important;
   color: rgb(15 23 42) !important;
+}
+
+/* Tooltip Customization */
+.custom-leaflet-tooltip {
+  background: rgba(15, 23, 42, 0.92) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3) !important;
+  color: #fff !important;
+  padding: 6px 10px !important;
+  font-family: Inter, sans-serif !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+.custom-leaflet-tooltip::before {
+  border-top-color: rgba(15, 23, 42, 0.92) !important;
+}
+
+.map-tooltip {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.map-tooltip-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.01em;
+}
+
+.map-tooltip-sub {
+  font-size: 11px;
+  color: #93c5fd;
+  font-weight: 500;
+}
+
+/* Capital Marker Icon */
+.capital-marker-icon {
+  background: transparent;
+  border: none;
+}
+
+.capital-pin {
+  position: relative;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.capital-pin-ring {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(239, 68, 68, 0.3);
+  animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+}
+
+.capital-pin-dot {
+  position: relative;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #ef4444;
+  border: 2px solid #ffffff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  transition: transform 0.2s ease;
+}
+
+.capital-pin:hover .capital-pin-dot {
+  transform: scale(1.3);
+  background: #dc2626;
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.9;
+  }
+  70% {
+    transform: scale(1.4);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.4);
+    opacity: 0;
+  }
 }

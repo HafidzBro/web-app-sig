@@ -1,52 +1,140 @@
-# Nusantara dalam Angka
+# Nusantara dalam Angka — Sistem Informasi Geografis Provinsi Indonesia
 
-Aplikasi web SIG berbasis React, Vite, Leaflet, dan Tailwind CSS untuk menampilkan data wilayah provinsi Indonesia. Aplikasi memuat peta interaktif, filter luas wilayah dan jumlah pulau, pencarian provinsi atau ibu kota, panel detail provinsi, serta tabel referensi data.
+Platform visualisasi data Sistem Informasi Geografis (SIG / GIS) berbasis web interaktif untuk menampilkan, memfilter, dan menganalisis data spasial serta statistik provinsi di seluruh Indonesia.
+
+**Live:** https://web-app-4eyoox19t-hafidzbro.vercel.app/
+
+---
+
+## Tech Stack
+
+| Layer | Teknologi |
+|-------|-----------|
+| Framework | React 19 |
+| Bundler & Dev Tool | Vite 8 |
+| Routing | React Router DOM v7 |
+| Mapping Library | Leaflet + React-Leaflet |
+| Map Tile Providers | CartoDB Positron, OpenStreetMap, ESRI World Imagery |
+| Styling | Tailwind CSS v4 + Custom CSS |
+| Data Processing | PapaParse (CSV Parser) + GeoJSON |
+| Icons & Typography | Google Material Symbols Outlined + Inter Font |
+
+---
 
 ## Fitur Utama
 
-- **Peta Interaktif Spasial Indonesia:**
-  - Layer tematik luas wilayah (choropleth), jumlah pulau, dan sebaran ibu kota provinsi.
-  - Pilihan Base Map: **Clean Light (CartoDB Positron)**, **Street (OSM)**, dan **Satelit (ESRI)** dengan atribusi standar.
-  - Hover tooltip informatif instan pada poligon provinsi dan titik ibu kota.
-  - Pin kustom beranimasi untuk titik ibu kota.
-  - Tombol **Reset View** satu klik untuk kembali ke tampilan menyeluruh kepulauan Indonesia.
-- **Pencarian & Filter Cerdas:**
-  - Pencarian cepat provinsi / ibu kota dengan efek fly-to otomatis.
-  - Advanced Filter berdasarkan skala luas wilayah (besar/menengah/kecil) dan kuantitas pulau.
-- **Tabel & Master Data Terpadu:**
-  - Sorting kolom tabel (berdasarkan nama provinsi, ibu kota, luas wilayah, dan jumlah pulau).
-  - Pencarian instan langsung di dalam tabel.
-  - Quick statistics banner (total provinsi, rata-rata luas wilayah, provinsi terluas & terkecil).
-  - Ekspor CSV data master atau data hasil pencarian.
-- **Arsitektur Performa Tinggi:**
-  - Manajemen state terpusat via `ProvinceContext` (Single Source of Truth), menghilangkan duplikasi fetch dan parse file CSV & GeoJSON.
-  - Indikator pemuatan data (loading state) halus.
+### Peta Spasial Interaktif (GIS)
+- **Multi-layer Tematik:** Layer tematik luas wilayah (*choropleth map*), klasifikasi jumlah pulau, serta titik sebaran ibu kota provinsi.
+- **Base Map Switcher:** Pilihan peta dasar secara instan antara **Clean Light (CartoDB Positron)**, **Street (OpenStreetMap)**, dan **Satelit (ESRI World Imagery)** dengan atribusi standar resmi.
+- **Dynamic Capsule Controls:** Tombol kontrol mode layer dan peta dasar berbentuk kapsul animasi (*dynamic island pill*) yang hemat ruang pandang peta (posisi sejajar di desktop, bertumpuk rapi di layar ponsel).
+- **Hover Tooltips:** Tooltip instan saat kursor mengarah ke poligon provinsi atau titik ibu kota dengan ringkasan nama dan metrik angka.
+- **Pulse Capital Markers:** Marker ibu kota kustom modern dengan animasi denyut (*pulse ring*) merah.
+- **Reset View 1-Klik:** Tombol *Reset View* di samping tombol zoom (`+/-`) untuk mengembalikan fokus kamera ke seluruh kepulauan Nusantara (`[-2.5, 118]`, zoom 5).
+- **Detail Panel:** Panel samping interaktif menampilkan metrik luas wilayah, jumlah pulau, ibu kota, serta koordinat lintang (*latitude*) & bujur (*longitude*) provinsi terpilih.
 
+### Dashboard & Filter Spasial
+- **Summary Cards:** Kartu ringkasan metrik Total Provinsi, Total Luas Wilayah (km²), dan Total Pulau di Indonesia.
+- **Pencarian Cepat:** Kolom pencarian provinsi/ibu kota dengan fitur *fly-to* otomatis ke koordinat lokasi yang dipilih.
+- **Advanced Spatial Filter Drawer:** Filter wilayah interaktif berdasarkan skala luas wilayah (>50.000 km², 10.000–50.000 km², <10.000 km²) dan kuantitas pulau (>1.000, 100–1.000, <100 pulau).
 
-## Menjalankan Proyek
+### Master Data & Tabel Referensi
+- **Tabel Interaktif Berurut (Sortable):** Urutkan data berdasarkan kolom No, Nama Provinsi, Ibu Kota, Luas Wilayah, atau Jumlah Pulau secara *ascending* maupun *descending*.
+- **Pencarian Real-Time Tabel:** Input pencarian instan langsung di dalam tabel untuk memfilter nama provinsi atau ibu kota.
+- **Quick Statistics Banner:** Kartu statistik cepat untuk total provinsi, rata-rata luas per provinsi, provinsi terluas, dan provinsi terkecil.
+- **Smart CSV Export:** Ekspor berkas CSV langsung dari browser untuk seluruh data master atau hasil data terfilter.
+
+### Arsitektur Terpadu & Performa
+- **Centralized State (`ProvinceContext`):** *Single Source of Truth* yang mengeliminasi duplikasi *network fetch* dan *parse* berkas CSV/GeoJSON antar komponen.
+- **Indikator Pemuatan (*Loading Skeleton*):** Animasi pemuatan data spasial yang halus.
+- **Desain Responsif:** Navigasi sidebar desktop dan drawer navigasi mobile yang adaptif untuk berbagai ukuran perangkat.
+
+---
+
+## Setup Lokal
+
+### Prasyarat
+- Node.js 18+
+- npm / pnpm / yarn
+
+### Instalasi
 
 ```bash
+# Clone repositori
+git clone https://github.com/HafidzBro/web-app-sig.git
+cd web-app-sig
+
+# Instalasi dependensi
 npm install
+```
+
+### Menjalankan Dev Server
+
+```bash
 npm run dev
 ```
 
-Build produksi:
+Buka peramban di `http://localhost:5173`
+
+### Build Produksi
 
 ```bash
+# Build bundle produksi
 npm run build
+
+# Menjalankan preview build lokal
 npm run preview
 ```
 
-Validasi kode:
+### Pemeriksaan Kode (Linting)
 
 ```bash
 npm run lint
 ```
 
-## Struktur Data
+---
 
-- `src/data/data.csv`: data luas wilayah, persentase luas, dan jumlah pulau per provinsi.
-- `src/data/provinsi.json`: GeoJSON batas wilayah provinsi.
-- `src/data/ibukota.json`: GeoJSON titik ibu kota provinsi.
+## Struktur Proyek
 
-Nama provinsi pada ketiga file data perlu konsisten agar proses penggabungan data peta berjalan lengkap.
+```
+src/
+├── components/
+│   ├── MapView.jsx          # Komponen peta Leaflet, capsule controls, & detail panel
+│   ├── SummaryCard.jsx      # Kartu metrik ringkasan dashboard
+│   └── Table.jsx            # Tabel data interaktif dengan sorting & live filter
+├── context/
+│   └── ProvinceContext.jsx  # Central state & data provider (Single Source of Truth)
+├── data/
+│   ├── data.csv             # Data statistik tabular resmi BPS (luas, persentase, pulau)
+│   ├── ibukota.json         # GeoJSON titik koordinat spasial ibu kota
+│   └── provinsi.json        # GeoJSON poligon batas administrasi provinsi
+├── layout/
+│   ├── MainLayout.jsx       # Layout dasar aplikasi pembungkus outlet
+│   ├── Sidebar.jsx          # Navigasi samping desktop & mobile drawer
+│   └── TopBar.jsx           # Header atas aplikasi
+├── pages/
+│   ├── Dashboard.jsx        # Halaman utama visualisasi peta SIG & filter drawer
+│   └── DataReference.jsx    # Halaman master data, quick stats, & ekspor CSV
+├── styles/
+│   ├── index.css            # Setup Tailwind CSS v4 & variabel warna tema
+│   └── map.css              # Kustomisasi Leaflet, custom tooltip, & pulse pin marker
+├── App.jsx                  # Root router & ProvinceProvider
+└── main.jsx                 # Entry point aplikasi
+```
+
+---
+
+## Dataset (Sumber Data)
+
+| Berkas | Format | Deskripsi |
+|--------|--------|-----------|
+| `src/data/data.csv` | CSV Tabular | Data statistik resmi (Provinsi, Ibu Kota, Luas Wilayah km², Persentase Luas, Jumlah Pulau) |
+| `src/data/provinsi.json` | GeoJSON (Polygon) | Batas wilayah spasial 38 provinsi di Indonesia |
+| `src/data/ibukota.json` | GeoJSON (Point) | Koordinat titik geografis (*Point*) seluruh ibu kota provinsi |
+
+---
+
+## Lisensi & Atribusi
+
+- Peta dasar disediakan oleh [CartoDB](https://carto.com/), [OpenStreetMap](https://www.openstreetmap.org/), dan [Esri](https://www.esri.com/).
+- Data statistik wilayah bersumber dari Badan Pusat Statistik (BPS) Indonesia 2025.
+- Proyek ini dikembangkan untuk keperluan visualisasi Sistem Informasi Geografis (SIG) Indonesia.
